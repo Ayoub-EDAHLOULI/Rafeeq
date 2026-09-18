@@ -1,5 +1,6 @@
 use std::num::NonZeroU32;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use llama_cpp_2::context::params::LlamaContextParams;
 use llama_cpp_2::context::LlamaContext;
@@ -9,7 +10,8 @@ use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{AddBos, LlamaChatMessage, LlamaModel};
 use llama_cpp_2::sampling::LlamaSampler;
 use self_cell::self_cell;
-use tauri::{AppHandle, State};
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use encoding_rs::UTF_8;
 
@@ -35,6 +37,7 @@ struct LoadedModel {
 pub struct LlmState {
     backend: LlamaBackend,
     loaded: Mutex<Option<LoadedModel>>,
+    stop_flag: Arc<AtomicBool>,
 }
 
 // SAFETY: llama.cpp's model/context types are not thread-affine, only
@@ -51,8 +54,26 @@ impl LlmState {
         Ok(Self {
             backend,
             loaded: Mutex::new(None),
+            stop_flag: Arc::new(AtomicBool::new(false)),
         })
     }
+}
+
+#[derive(Clone, Serialize)]
+struct ChatTokenEvent<'a> {
+    request_id: &'a str,
+    token: String,
+}
+
+#[derive(Clone, Serialize)]
+struct ChatDoneEvent<'a> {
+    request_id: &'a str,
+}
+
+#[derive(Clone, Serialize)]
+struct ChatErrorEvent<'a> {
+    request_id: &'a str,
+    message: String,
 }
 
 #[tauri::command]
@@ -95,16 +116,79 @@ pub fn loaded_model(state: State<LlmState>) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-pub fn send_message(state: State<LlmState>, prompt: String) -> Result<String, String> {
-    let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
-    let loaded = loaded.as_mut().ok_or("No model loaded")?;
+pub fn send_message(
+    app: AppHandle,
+    state: State<LlmState>,
+    request_id: String,
+    prompt: String,
+) -> Result<(), String> {
+    if state.loaded.lock().map_err(|e| e.to_string())?.is_none() {
+        return Err("No model loaded".to_string());
+    }
 
-    loaded
-        .inner
-        .with_dependent_mut(|model, ctx| generate(model, ctx, &prompt))
+    state.stop_flag.store(false, Ordering::SeqCst);
+    let stop_flag = state.stop_flag.clone();
+
+    std::thread::spawn(move || {
+        let state = app.state::<LlmState>();
+        let token_request_id = request_id.clone();
+        let result = (|| {
+            let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
+            let loaded = loaded.as_mut().ok_or("No model loaded")?;
+            loaded.inner.with_dependent_mut(|model, ctx| {
+                generate(model, ctx, &prompt, &stop_flag, |token| {
+                    let _ = app.emit(
+                        "chat-token",
+                        ChatTokenEvent {
+                            request_id: &token_request_id,
+                            token,
+                        },
+                    );
+                })
+            })
+        })();
+
+        match result {
+            Ok(()) => {
+                let _ = app.emit(
+                    "chat-done",
+                    ChatDoneEvent {
+                        request_id: &request_id,
+                    },
+                );
+            }
+            Err(message) => {
+                let _ = app.emit(
+                    "chat-error",
+                    ChatErrorEvent {
+                        request_id: &request_id,
+                        message,
+                    },
+                );
+            }
+        }
+    });
+
+    Ok(())
 }
 
-fn generate(model: &LlamaModel, ctx: &mut LlamaContext, prompt: &str) -> Result<String, String> {
+#[tauri::command]
+pub fn stop_generation(state: State<LlmState>) {
+    state.stop_flag.store(true, Ordering::SeqCst);
+}
+
+fn generate(
+    model: &LlamaModel,
+    ctx: &mut LlamaContext,
+    prompt: &str,
+    stop_flag: &AtomicBool,
+    mut on_token: impl FnMut(String),
+) -> Result<(), String> {
+    // Each call is currently a standalone exchange (no conversation history
+    // is threaded through), so the previous turn's KV cache state must be
+    // cleared or decode() fails once the context fills up across turns.
+    ctx.clear_kv_cache();
+
     let tmpl = model
         .chat_template(None)
         .map_err(|e| format!("Model has no chat template: {e}"))?;
@@ -141,10 +225,13 @@ fn generate(model: &LlamaModel, ctx: &mut LlamaContext, prompt: &str) -> Result<
     ]);
     let mut decoder = UTF_8.new_decoder();
 
-    let mut output = String::new();
     let mut n_cur = batch.n_tokens();
 
     for _ in 0..MAX_RESPONSE_TOKENS {
+        if stop_flag.load(Ordering::SeqCst) {
+            break;
+        }
+
         let token = sampler.sample(ctx, batch.n_tokens() - 1);
         sampler.accept(token);
 
@@ -155,7 +242,7 @@ fn generate(model: &LlamaModel, ctx: &mut LlamaContext, prompt: &str) -> Result<
         let piece = model
             .token_to_piece(token, &mut decoder, true, None)
             .map_err(|e| format!("Failed to detokenize response: {e}"))?;
-        output.push_str(&piece);
+        on_token(piece);
 
         batch.clear();
         batch
@@ -167,5 +254,5 @@ fn generate(model: &LlamaModel, ctx: &mut LlamaContext, prompt: &str) -> Result<
             .map_err(|e| format!("Failed to decode response token: {e}"))?;
     }
 
-    Ok(output)
+    Ok(())
 }

@@ -24,7 +24,8 @@ pub fn run() {
             llm::load_model,
             llm::unload_model,
             llm::loaded_model,
-            llm::send_message
+            llm::send_message,
+            llm::stop_generation
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

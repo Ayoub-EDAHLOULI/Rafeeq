@@ -34,6 +34,10 @@ export function getLoadedModel(): Promise<string | null> {
   return invoke<string | null>("loaded_model");
 }
 
-export function sendMessage(prompt: string): Promise<string> {
-  return invoke<string>("send_message", { prompt });
+export function sendMessage(requestId: string, prompt: string): Promise<void> {
+  return invoke<void>("send_message", { requestId, prompt });
+}
+
+export function stopGeneration(): Promise<void> {
+  return invoke<void>("stop_generation");
 }
