@@ -17,14 +17,15 @@ Some development and work environments — corporate VMs, air-gapped networks, r
 - **Local chat** — prompt in, streamed response out, powered by a small quantized model running on CPU
 - **Model manager** — point Rafeeq at a sideloaded `.gguf` file, swap models, see size/quantization info
 - **Code-help mode** — paste or select code, ask questions, get explanations or suggestions (no code execution)
-- **Document Q&A** — load a local file (`.txt`, `.md`, `.pdf`, `.docx`) and ask questions about its contents
-- **Summarization** — paste or load a document, get a summary
+- **Document Q&A & summarization** — load a local `.txt`/`.md` file and ask questions about its contents or get a summary; long documents are truncated to fit the model's context
+- **Local RAG** — index a folder of `.txt`/`.md` documents with a sideloaded embedding model, then ask questions answered from the most relevant retrieved passages
+- **Session history** — conversations are saved automatically and can be resumed from the sidebar
+- **Model profiles** — save named shortcuts to sideloaded models for quick switching
+- **Offline verification** — a hand-maintained allowlist gate plus an in-app indicator confirm no network-capable plugin is registered in the build
 
 ### Planned
 
-- Local RAG over a folder of documents (embeddings + local vector search)
-- Conversation history / session management
-- Multiple model profiles (fast small model + larger model, user-selectable per session)
+- PDF and DOCX support for Document Q&A
 - Integration with [Naskh](#) so scanned/OCR'd documents can flow directly into Rafeeq's context
 
 ## Verifiably offline
@@ -72,6 +73,8 @@ Rafeeq needs at least one `.gguf` model file before it can chat.
 
 No internet access is required on the target machine at any point after the file is copied.
 
+For local RAG, sideload a second, small embedding model (e.g. `nomic-embed-text-v1.5`) into the same models directory — embedding models are not instruction-tuned for chat, so they're kept separate from your chat model and selected from RAG mode in the app.
+
 ## Installation
 
 ### From release
@@ -94,20 +97,22 @@ npm install
 npm run tauri dev
 ```
 
-Requires the standard [Tauri prerequisites](https://tauri.app/start/prerequisites/) (Rust toolchain, platform-specific webview dependencies) plus a C/C++ build toolchain and CMake for compiling `llama.cpp` at build time.
+Requires the standard [Tauri prerequisites](https://tauri.app/start/prerequisites/) (Rust toolchain, platform-specific webview dependencies) plus CMake, a C/C++ compiler (MSVC on Windows), and LLVM/libclang for `bindgen` — all needed to compile `llama.cpp` from source via `llama-cpp-sys-2` at build time. On Windows, set `LIBCLANG_PATH` if `bindgen` can't find `libclang.dll` automatically.
 
 ## Project status
 
-🚧 Early development. Building incrementally, milestone by milestone:
+Core milestones complete, built incrementally:
 
 - [x] Project scaffolding
 - [x] Model manager + basic local chat
-- [ ] Offline/air-gap verification tooling
-- [ ] Code-help mode
-- [ ] Document Q&A + summarization
-- [ ] Local RAG (stretch)
-- [ ] Session history (stretch)
-- [ ] Multi-model profiles (stretch)
+- [x] Offline/air-gap verification tooling
+- [x] Code-help mode
+- [x] Document Q&A + summarization
+- [x] Local RAG (stretch)
+- [x] Session history (stretch)
+- [x] Multi-model profiles (stretch)
+
+Next up: PDF/DOCX support for Document Q&A, and packaging a first release build.
 
 ## License
 
