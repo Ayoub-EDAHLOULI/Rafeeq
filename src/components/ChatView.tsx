@@ -2,15 +2,24 @@ import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { ChatMessage } from "../types/message";
 import { sendMessage, stopGeneration, type ChatTurn } from "../lib/scanModels";
+import { pickDocument, type LoadedDocument } from "../lib/documents";
 import MessageContent from "./MessageContent";
 
-type ChatMode = "general" | "code";
+type ChatMode = "general" | "code" | "document";
 
 const CODE_HELP_SYSTEM_PROMPT =
   "You are a code assistant. Explain code, answer programming questions, " +
   "and suggest fixes or improvements clearly and concisely. Use fenced " +
   "code blocks for any code you write. You cannot execute code or access " +
   "files — only discuss and explain it.";
+
+function documentSystemPrompt(doc: LoadedDocument): string {
+  return (
+    "You are answering questions about the following document. Base your " +
+    "answers only on its content; say so if the answer isn't in it.\n\n" +
+    `--- ${doc.file_name} ---\n${doc.content}`
+  );
+}
 
 interface ChatViewProps {
   modelName: string;
@@ -37,6 +46,8 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<ChatMode>("general");
+  const [loadedDoc, setLoadedDoc] = useState<LoadedDocument | null>(null);
+  const [isPickingDocument, setIsPickingDocument] = useState(false);
   const activeRequestId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -84,9 +95,16 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     const requestId = crypto.randomUUID();
     activeRequestId.current = requestId;
 
+    const systemPrompt =
+      mode === "code"
+        ? CODE_HELP_SYSTEM_PROMPT
+        : mode === "document" && loadedDoc
+          ? documentSystemPrompt(loadedDoc)
+          : null;
+
     const history: ChatTurn[] = [
-      ...(mode === "code"
-        ? [{ role: "system" as const, content: CODE_HELP_SYSTEM_PROMPT }]
+      ...(systemPrompt
+        ? [{ role: "system" as const, content: systemPrompt }]
         : []),
       ...messages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: prompt },
@@ -105,6 +123,19 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
       activeRequestId.current = null;
       setIsGenerating(false);
       setError(String(err));
+    }
+  }
+
+  async function handleLoadDocument() {
+    setError(null);
+    setIsPickingDocument(true);
+    try {
+      const doc = await pickDocument();
+      if (doc) setLoadedDoc(doc);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setIsPickingDocument(false);
     }
   }
 
@@ -154,6 +185,17 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
             >
               Code help
             </button>
+            <button
+              type="button"
+              onClick={() => setMode("document")}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                mode === "document"
+                  ? "bg-primary text-white"
+                  : "text-subText hover:text-text"
+              }`}
+            >
+              Document
+            </button>
           </div>
           <button
             type="button"
@@ -164,6 +206,40 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
           </button>
         </div>
       </div>
+
+      {mode === "document" && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+          <button
+            type="button"
+            onClick={handleLoadDocument}
+            disabled={isPickingDocument}
+            className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-inputBg disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPickingDocument
+              ? "Choosing…"
+              : loadedDoc
+                ? "Change document"
+                : "Load document"}
+          </button>
+          {loadedDoc ? (
+            <div className="min-w-0">
+              <p className="truncate font-mono text-xs text-text">
+                {loadedDoc.file_name}
+              </p>
+              {loadedDoc.truncated && (
+                <p className="text-xs text-danger">
+                  Document was too long and was truncated to fit the
+                  model's context.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-subText">
+              No document loaded. Supports .txt and .md files.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
@@ -228,7 +304,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
           <button
             type="button"
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || (mode === "document" && !loadedDoc)}
             className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Send

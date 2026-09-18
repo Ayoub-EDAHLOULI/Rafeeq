@@ -17,7 +17,7 @@ use encoding_rs::UTF_8;
 
 use crate::models::resolve_models_dir;
 
-const CONTEXT_SIZE: u32 = 4096;
+pub const CONTEXT_SIZE: u32 = 4096;
 const MAX_RESPONSE_TOKENS: usize = 1024;
 
 self_cell!(
@@ -113,6 +113,44 @@ pub fn unload_model(state: State<LlmState>) -> Result<(), String> {
 pub fn loaded_model(state: State<LlmState>) -> Result<Option<String>, String> {
     let loaded = state.loaded.lock().map_err(|e| e.to_string())?;
     Ok(loaded.as_ref().map(|m| m.file_name.clone()))
+}
+
+impl LlmState {
+    /// Truncates `text` to at most `budget` tokens using the loaded model's
+    /// tokenizer, returning the (possibly shortened) text and whether it was
+    /// truncated. Errors if no model is loaded.
+    pub fn truncate_to_token_budget(&self, text: &str, budget: usize) -> Result<(String, bool), String> {
+        let loaded = self.loaded.lock().map_err(|e| e.to_string())?;
+        let loaded = loaded.as_ref().ok_or("No model loaded")?;
+        loaded
+            .inner
+            .with_dependent(|model, _ctx| truncate_to_budget(model, text, budget))
+    }
+}
+
+fn truncate_to_budget(
+    model: &LlamaModel,
+    text: &str,
+    budget: usize,
+) -> Result<(String, bool), String> {
+    let tokens = model
+        .str_to_token(text, AddBos::Never)
+        .map_err(|e| format!("Failed to tokenize document: {e}"))?;
+
+    if tokens.len() <= budget {
+        return Ok((text.to_string(), false));
+    }
+
+    let mut decoder = UTF_8.new_decoder();
+    let mut truncated = String::new();
+    for token in &tokens[..budget] {
+        let piece = model
+            .token_to_piece(*token, &mut decoder, true, None)
+            .map_err(|e| format!("Failed to detokenize document: {e}"))?;
+        truncated.push_str(&piece);
+    }
+
+    Ok((truncated, true))
 }
 
 #[derive(serde::Deserialize)]
