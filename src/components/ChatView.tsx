@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { ChatMessage } from "../types/message";
-import { sendMessage, stopGeneration } from "../lib/scanModels";
+import { sendMessage, stopGeneration, type ChatTurn } from "../lib/scanModels";
 
 interface ChatViewProps {
   modelName: string;
@@ -74,6 +74,11 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     const requestId = crypto.randomUUID();
     activeRequestId.current = requestId;
 
+    const history: ChatTurn[] = [
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+      { role: "user", content: prompt },
+    ];
+
     setMessages((prev) => [
       ...prev,
       { id: crypto.randomUUID(), role: "user", content: prompt },
@@ -82,7 +87,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     setIsGenerating(true);
 
     try {
-      await sendMessage(requestId, prompt);
+      await sendMessage(requestId, history);
     } catch (err) {
       activeRequestId.current = null;
       setIsGenerating(false);

@@ -34,8 +34,16 @@ export function getLoadedModel(): Promise<string | null> {
   return invoke<string | null>("loaded_model");
 }
 
-export function sendMessage(requestId: string, prompt: string): Promise<void> {
-  return invoke<void>("send_message", { requestId, prompt });
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export function sendMessage(
+  requestId: string,
+  history: ChatTurn[],
+): Promise<void> {
+  return invoke<void>("send_message", { requestId, history });
 }
 
 export function stopGeneration(): Promise<void> {

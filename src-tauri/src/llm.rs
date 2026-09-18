@@ -115,12 +115,18 @@ pub fn loaded_model(state: State<LlmState>) -> Result<Option<String>, String> {
     Ok(loaded.as_ref().map(|m| m.file_name.clone()))
 }
 
+#[derive(serde::Deserialize)]
+pub struct ChatTurn {
+    role: String,
+    content: String,
+}
+
 #[tauri::command]
 pub fn send_message(
     app: AppHandle,
     state: State<LlmState>,
     request_id: String,
-    prompt: String,
+    history: Vec<ChatTurn>,
 ) -> Result<(), String> {
     if state.loaded.lock().map_err(|e| e.to_string())?.is_none() {
         return Err("No model loaded".to_string());
@@ -136,7 +142,7 @@ pub fn send_message(
             let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
             let loaded = loaded.as_mut().ok_or("No model loaded")?;
             loaded.inner.with_dependent_mut(|model, ctx| {
-                generate(model, ctx, &prompt, &stop_flag, |token| {
+                generate(model, ctx, &history, &stop_flag, |token| {
                     let _ = app.emit(
                         "chat-token",
                         ChatTokenEvent {
@@ -180,22 +186,25 @@ pub fn stop_generation(state: State<LlmState>) {
 fn generate(
     model: &LlamaModel,
     ctx: &mut LlamaContext,
-    prompt: &str,
+    history: &[ChatTurn],
     stop_flag: &AtomicBool,
     mut on_token: impl FnMut(String),
 ) -> Result<(), String> {
-    // Each call is currently a standalone exchange (no conversation history
-    // is threaded through), so the previous turn's KV cache state must be
-    // cleared or decode() fails once the context fills up across turns.
+    // Each call re-encodes the whole conversation from scratch (no incremental
+    // KV-cache reuse across turns yet), so the previous turn's cache state
+    // must be cleared or decode() fails once the context fills up.
     ctx.clear_kv_cache();
 
     let tmpl = model
         .chat_template(None)
         .map_err(|e| format!("Model has no chat template: {e}"))?;
-    let message = LlamaChatMessage::new("user".to_string(), prompt.to_string())
+    let messages = history
+        .iter()
+        .map(|turn| LlamaChatMessage::new(turn.role.clone(), turn.content.clone()))
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|e| format!("Invalid chat message: {e}"))?;
     let formatted = model
-        .apply_chat_template(&tmpl, &[message], true)
+        .apply_chat_template(&tmpl, &messages, true)
         .map_err(|e| format!("Failed to apply chat template: {e}"))?;
 
     let tokens = model
@@ -204,6 +213,14 @@ fn generate(
 
     if tokens.is_empty() {
         return Err("Prompt produced no tokens".to_string());
+    }
+
+    if tokens.len() >= CONTEXT_SIZE as usize {
+        return Err(format!(
+            "Conversation is too long for this model's context ({} tokens, limit {})",
+            tokens.len(),
+            CONTEXT_SIZE
+        ));
     }
 
     let mut batch = LlamaBatch::new(CONTEXT_SIZE as usize, 1);
