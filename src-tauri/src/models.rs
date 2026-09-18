@@ -44,7 +44,7 @@ pub fn models_dir(app: AppHandle) -> Result<String, String> {
     Ok(dir.to_string_lossy().to_string())
 }
 
-fn resolve_models_dir(app: &AppHandle) -> Result<PathBuf, String> {
+pub fn resolve_models_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let base = app
         .path()
         .app_local_data_dir()

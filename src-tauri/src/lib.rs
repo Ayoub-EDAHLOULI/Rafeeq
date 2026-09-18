@@ -1,5 +1,7 @@
+mod llm;
 mod models;
 
+use llm::LlmState;
 use tauri::{Manager, Theme};
 
 #[tauri::command]
@@ -18,11 +20,15 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             set_window_theme,
             models::scan_models,
-            models::models_dir
+            models::models_dir,
+            llm::load_model,
+            llm::unload_model,
+            llm::loaded_model
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             let _ = window.set_theme(Some(Theme::Light));
+            app.manage(LlmState::new().expect("failed to init llama backend"));
             Ok(())
         })
         .run(tauri::generate_context!())

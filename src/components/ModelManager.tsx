@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import type { ModelInfo } from "../types/model";
-import { getModelsDir, scanModels } from "../lib/scanModels";
+import {
+  getLoadedModel,
+  getModelsDir,
+  loadModel,
+  scanModels,
+  unloadModel,
+} from "../lib/scanModels";
 import ModelCard from "./ModelCard";
 
 type LoadState =
@@ -10,15 +16,20 @@ type LoadState =
 
 export default function ModelManager() {
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [loadedFile, setLoadedFile] = useState<string | null>(null);
+  const [loadingFile, setLoadingFile] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   async function load() {
     setState({ status: "loading" });
     try {
-      const [models, modelsDir] = await Promise.all([
+      const [models, modelsDir, loaded] = await Promise.all([
         scanModels(),
         getModelsDir(),
+        getLoadedModel(),
       ]);
       setState({ status: "ready", models, modelsDir });
+      setLoadedFile(loaded);
     } catch (err) {
       setState({ status: "error", message: String(err) });
     }
@@ -28,8 +39,27 @@ export default function ModelManager() {
     load();
   }, []);
 
-  function handleLoad(model: ModelInfo) {
-    console.log("Load model (not yet wired):", model.fileName);
+  async function handleLoad(model: ModelInfo) {
+    setLoadError(null);
+    setLoadingFile(model.fileName);
+    try {
+      await loadModel(model.fileName);
+      setLoadedFile(model.fileName);
+    } catch (err) {
+      setLoadError(String(err));
+    } finally {
+      setLoadingFile(null);
+    }
+  }
+
+  async function handleUnload() {
+    setLoadError(null);
+    try {
+      await unloadModel();
+      setLoadedFile(null);
+    } catch (err) {
+      setLoadError(String(err));
+    }
   }
 
   return (
@@ -53,6 +83,12 @@ export default function ModelManager() {
         </button>
       </div>
 
+      {loadError && (
+        <div className="mb-4 rounded-lg border border-danger/40 bg-danger/5 px-4 py-3 text-sm text-danger">
+          {loadError}
+        </div>
+      )}
+
       {state.status === "loading" && (
         <div className="flex flex-1 items-center justify-center py-20">
           <p className="text-sm text-subText">Scanning for models…</p>
@@ -72,8 +108,8 @@ export default function ModelManager() {
         <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border py-20 text-center">
           <p className="text-sm font-medium text-text">No models found</p>
           <p className="max-w-sm text-sm text-subText">
-            Add .gguf files to your models directory, then refresh to see
-            them here.
+            Add .gguf files to your models directory, then refresh to see them
+            here.
           </p>
           <p className="mt-1 max-w-sm break-all font-mono text-xs text-subText">
             {state.modelsDir}
@@ -84,7 +120,14 @@ export default function ModelManager() {
       {state.status === "ready" && state.models.length > 0 && (
         <div className="flex flex-col gap-3">
           {state.models.map((model) => (
-            <ModelCard key={model.fileName} model={model} onLoad={handleLoad} />
+            <ModelCard
+              key={model.fileName}
+              model={model}
+              isLoaded={loadedFile === model.fileName}
+              isLoading={loadingFile === model.fileName}
+              onLoad={handleLoad}
+              onUnload={handleUnload}
+            />
           ))}
         </div>
       )}

@@ -21,3 +21,15 @@ export async function scanModels(): Promise<ModelInfo[]> {
 export function getModelsDir(): Promise<string> {
   return invoke<string>("models_dir");
 }
+
+export function loadModel(fileName: string): Promise<void> {
+  return invoke<void>("load_model", { fileName });
+}
+
+export function unloadModel(): Promise<void> {
+  return invoke<void>("unload_model");
+}
+
+export function getLoadedModel(): Promise<string | null> {
+  return invoke<string | null>("loaded_model");
+}
