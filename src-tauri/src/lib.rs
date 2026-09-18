@@ -2,6 +2,7 @@ mod documents;
 mod llm;
 mod models;
 mod offline_audit;
+mod profiles;
 mod sessions;
 
 use llm::LlmState;
@@ -34,7 +35,10 @@ pub fn run() {
             sessions::save_session,
             sessions::list_sessions,
             sessions::load_session,
-            sessions::delete_session
+            sessions::delete_session,
+            profiles::save_profile,
+            profiles::list_profiles,
+            profiles::delete_profile
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

@@ -7,6 +7,7 @@ interface ModelCardProps {
   isLoading: boolean;
   onLoad: (model: ModelInfo) => void;
   onUnload: (model: ModelInfo) => void;
+  onSaveProfile: (model: ModelInfo) => void;
 }
 
 export default function ModelCard({
@@ -15,6 +16,7 @@ export default function ModelCard({
   isLoading,
   onLoad,
   onUnload,
+  onSaveProfile,
 }: ModelCardProps) {
   return (
     <div
@@ -74,6 +76,16 @@ export default function ModelCard({
           {formatBytes(model.sizeBytes)}
         </span>
       </div>
+
+      <button
+        type="button"
+        onClick={() => onSaveProfile(model)}
+        title="Save as profile"
+        aria-label="Save as profile"
+        className="hidden shrink-0 rounded-lg border border-border px-2.5 py-2 text-sm text-subText transition-colors hover:bg-inputBg hover:text-text sm:block"
+      >
+        ★
+      </button>
 
       {isLoaded ? (
         <button
