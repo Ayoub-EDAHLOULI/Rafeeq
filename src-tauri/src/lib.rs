@@ -1,3 +1,5 @@
+mod models;
+
 use tauri::{Manager, Theme};
 
 #[tauri::command]
@@ -13,7 +15,11 @@ fn set_window_theme(window: tauri::WebviewWindow, theme: String) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![set_window_theme])
+        .invoke_handler(tauri::generate_handler![
+            set_window_theme,
+            models::scan_models,
+            models::models_dir
+        ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             let _ = window.set_theme(Some(Theme::Light));
