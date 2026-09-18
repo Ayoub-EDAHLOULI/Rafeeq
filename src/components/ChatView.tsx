@@ -2,6 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { ChatMessage } from "../types/message";
 import { sendMessage, stopGeneration, type ChatTurn } from "../lib/scanModels";
+import MessageContent from "./MessageContent";
+
+type ChatMode = "general" | "code";
+
+const CODE_HELP_SYSTEM_PROMPT =
+  "You are a code assistant. Explain code, answer programming questions, " +
+  "and suggest fixes or improvements clearly and concisely. Use fenced " +
+  "code blocks for any code you write. You cannot execute code or access " +
+  "files — only discuss and explain it.";
 
 interface ChatViewProps {
   modelName: string;
@@ -27,6 +36,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<ChatMode>("general");
   const activeRequestId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -75,6 +85,9 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     activeRequestId.current = requestId;
 
     const history: ChatTurn[] = [
+      ...(mode === "code"
+        ? [{ role: "system" as const, content: CODE_HELP_SYSTEM_PROMPT }]
+        : []),
       ...messages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: prompt },
     ];
@@ -117,13 +130,39 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
           <p className="text-sm font-medium text-text">Chat</p>
           <p className="truncate font-mono text-xs text-subText">{modelName}</p>
         </div>
-        <button
-          type="button"
-          onClick={onChangeModel}
-          className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-inputBg"
-        >
-          Change model
-        </button>
+        <div className="flex shrink-0 items-center gap-3">
+          <div className="flex items-center rounded-lg border border-border p-0.5 text-sm">
+            <button
+              type="button"
+              onClick={() => setMode("general")}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                mode === "general"
+                  ? "bg-primary text-white"
+                  : "text-subText hover:text-text"
+              }`}
+            >
+              General
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("code")}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                mode === "code"
+                  ? "bg-primary text-white"
+                  : "text-subText hover:text-text"
+              }`}
+            >
+              Code help
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={onChangeModel}
+            className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-inputBg"
+          >
+            Change model
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -141,18 +180,20 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
                 className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] whitespace-pre-wrap rounded-xl px-4 py-2 text-sm ${
+                  className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
                     message.role === "user"
                       ? "bg-primary text-white"
                       : "bg-card text-text"
                   }`}
                 >
-                  {message.content.length > 0
-                    ? message.content
-                    : message.role === "assistant" &&
-                      isGenerating && (
-                        <span className="text-subText">Thinking…</span>
-                      )}
+                  {message.content.length > 0 ? (
+                    <MessageContent content={message.content} />
+                  ) : (
+                    message.role === "assistant" &&
+                    isGenerating && (
+                      <span className="text-subText">Thinking…</span>
+                    )
+                  )}
                 </div>
               </div>
             ))}

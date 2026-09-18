@@ -35,7 +35,7 @@ export function getLoadedModel(): Promise<string | null> {
 }
 
 export interface ChatTurn {
-  role: "user" | "assistant";
+  role: "system" | "user" | "assistant";
   content: string;
 }
 
