@@ -1,14 +1,24 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+use tauri::{Manager, Theme};
+
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+fn set_window_theme(window: tauri::WebviewWindow, theme: String) {
+    let theme = match theme.as_str() {
+        "dark" => Some(Theme::Dark),
+        _ => Some(Theme::Light),
+    };
+    let _ = window.set_theme(theme);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![set_window_theme])
+        .setup(|app| {
+            let window = app.get_webview_window("main").unwrap();
+            let _ = window.set_theme(Some(Theme::Light));
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
