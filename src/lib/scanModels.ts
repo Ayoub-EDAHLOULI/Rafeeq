@@ -33,3 +33,7 @@ export function unloadModel(): Promise<void> {
 export function getLoadedModel(): Promise<string | null> {
   return invoke<string | null>("loaded_model");
 }
+
+export function sendMessage(prompt: string): Promise<string> {
+  return invoke<string>("send_message", { prompt });
+}

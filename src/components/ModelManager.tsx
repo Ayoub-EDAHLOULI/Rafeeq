@@ -14,7 +14,11 @@ type LoadState =
   | { status: "error"; message: string }
   | { status: "ready"; models: ModelInfo[]; modelsDir: string };
 
-export default function ModelManager() {
+interface ModelManagerProps {
+  onModelLoaded: (fileName: string) => void;
+}
+
+export default function ModelManager({ onModelLoaded }: ModelManagerProps) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [loadedFile, setLoadedFile] = useState<string | null>(null);
   const [loadingFile, setLoadingFile] = useState<string | null>(null);
@@ -45,6 +49,7 @@ export default function ModelManager() {
     try {
       await loadModel(model.fileName);
       setLoadedFile(model.fileName);
+      onModelLoaded(model.fileName);
     } catch (err) {
       setLoadError(String(err));
     } finally {

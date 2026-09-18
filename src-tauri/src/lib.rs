@@ -23,7 +23,8 @@ pub fn run() {
             models::models_dir,
             llm::load_model,
             llm::unload_model,
-            llm::loaded_model
+            llm::loaded_model,
+            llm::send_message
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
