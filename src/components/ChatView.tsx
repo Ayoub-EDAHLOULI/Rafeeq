@@ -10,10 +10,12 @@ import {
   saveSession,
   type SessionSummary,
 } from "../lib/sessions";
+import { ragSearch, type RagResult } from "../lib/rag";
 import MessageContent from "./MessageContent";
 import SessionSidebar from "./SessionSidebar";
+import RagPanel from "./RagPanel";
 
-type ChatMode = "general" | "code" | "document";
+type ChatMode = "general" | "code" | "document" | "rag";
 
 const CODE_HELP_SYSTEM_PROMPT =
   "You are a code assistant. Explain code, answer programming questions, " +
@@ -26,6 +28,24 @@ function documentSystemPrompt(doc: LoadedDocument): string {
     "You are answering questions about the following document. Base your " +
     "answers only on its content; say so if the answer isn't in it.\n\n" +
     `--- ${doc.file_name} ---\n${doc.content}`
+  );
+}
+
+function ragSystemPrompt(results: RagResult[]): string {
+  if (results.length === 0) {
+    return (
+      "No relevant passages were found in the indexed folder for this " +
+      "question. Say so rather than guessing."
+    );
+  }
+  const passages = results
+    .map((r) => `[${r.source_file}]\n${r.text}`)
+    .join("\n\n---\n\n");
+  return (
+    "Answer the question using only the passages below, retrieved from a " +
+    "local document index. Cite the source file when relevant, and say " +
+    "so if the passages don't contain the answer.\n\n" +
+    passages
   );
 }
 
@@ -62,6 +82,8 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
   const [pendingSessionModel, setPendingSessionModel] = useState<string | null>(
     null,
   );
+  const [ragIndexId, setRagIndexId] = useState<string | null>(null);
+  const [ragResults, setRagResults] = useState<RagResult[] | null>(null);
   const activeRequestId = useRef<string | null>(null);
 
   const sessionStateRef = useRef({
@@ -147,15 +169,26 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     setError(null);
     setInput("");
 
-    const requestId = crypto.randomUUID();
-    activeRequestId.current = requestId;
-
-    const systemPrompt =
+    let systemPrompt: string | null =
       mode === "code"
         ? CODE_HELP_SYSTEM_PROMPT
         : mode === "document" && loadedDoc
           ? documentSystemPrompt(loadedDoc)
           : null;
+
+    if (mode === "rag" && ragIndexId) {
+      try {
+        const results = await ragSearch(ragIndexId, prompt, 5);
+        setRagResults(results);
+        systemPrompt = ragSystemPrompt(results);
+      } catch (err) {
+        setError(String(err));
+        return;
+      }
+    }
+
+    const requestId = crypto.randomUUID();
+    activeRequestId.current = requestId;
 
     const history: ChatTurn[] = [
       ...(systemPrompt
@@ -186,6 +219,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     setSessionId(null);
     setSessionCreatedAt(null);
     setLoadedDoc(null);
+    setRagResults(null);
     setError(null);
   }
 
@@ -322,6 +356,17 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
               >
                 Document
               </button>
+              <button
+                type="button"
+                onClick={() => setMode("rag")}
+                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                  mode === "rag"
+                    ? "bg-primary text-white"
+                    : "text-subText hover:text-text"
+                }`}
+              >
+                RAG
+              </button>
             </div>
             <button
               type="button"
@@ -365,6 +410,33 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
               </p>
             )}
           </div>
+        )}
+
+        {mode === "rag" && (
+          <>
+            <RagPanel
+              activeIndexId={ragIndexId}
+              onSelectIndex={setRagIndexId}
+            />
+            {ragResults && ragResults.length > 0 && (
+              <details className="mb-4 rounded-lg border border-border bg-card px-4 py-2">
+                <summary className="cursor-pointer text-xs font-medium text-subText">
+                  {ragResults.length} passage
+                  {ragResults.length === 1 ? "" : "s"} used for the last reply
+                </summary>
+                <div className="mt-2 flex flex-col gap-2">
+                  {ragResults.map((result, i) => (
+                    <div key={i} className="text-xs">
+                      <p className="font-mono text-subText">
+                        {result.source_file} · {result.score.toFixed(2)}
+                      </p>
+                      <p className="text-text">{result.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </>
         )}
 
         <div className="flex-1 overflow-y-auto">
@@ -430,7 +502,11 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
             <button
               type="button"
               onClick={handleSend}
-              disabled={!input.trim() || (mode === "document" && !loadedDoc)}
+              disabled={
+                !input.trim() ||
+                (mode === "document" && !loadedDoc) ||
+                (mode === "rag" && !ragIndexId)
+              }
               className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Send

@@ -35,7 +35,7 @@ struct LoadedModel {
 }
 
 pub struct LlmState {
-    backend: LlamaBackend,
+    backend: Arc<LlamaBackend>,
     loaded: Mutex<Option<LoadedModel>>,
     stop_flag: Arc<AtomicBool>,
 }
@@ -49,13 +49,12 @@ unsafe impl Send for LlmState {}
 unsafe impl Sync for LlmState {}
 
 impl LlmState {
-    pub fn new() -> Result<Self, String> {
-        let backend = LlamaBackend::init().map_err(|e| e.to_string())?;
-        Ok(Self {
+    pub fn new(backend: Arc<LlamaBackend>) -> Self {
+        Self {
             backend,
             loaded: Mutex::new(None),
             stop_flag: Arc::new(AtomicBool::new(false)),
-        })
+        }
     }
 }
 
@@ -87,6 +86,13 @@ pub fn load_model(app: AppHandle, state: State<LlmState>, file_name: String) -> 
     let model_params = LlamaModelParams::default();
     let model = LlamaModel::load_from_file(&state.backend, &path, &model_params)
         .map_err(|e| format!("Failed to load model: {e}"))?;
+
+    if model.chat_template(None).is_err() {
+        return Err(format!(
+            "{file_name} has no chat template, so it can't be used for chat. \
+             This is likely an embedding-only model — load it from RAG mode instead."
+        ));
+    }
 
     let backend = &state.backend;
     let inner = ModelWithContext::try_new(model, |model| {
@@ -274,6 +280,7 @@ fn generate(
         .map_err(|e| format!("Failed to decode prompt: {e}"))?;
 
     let mut sampler = LlamaSampler::chain_simple([
+        LlamaSampler::penalties(model.n_vocab(), 256, 1.15, 0.0, 0.0),
         LlamaSampler::min_p(0.05, 1),
         LlamaSampler::temp(0.8),
         LlamaSampler::dist(1234),

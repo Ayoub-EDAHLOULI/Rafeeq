@@ -3,9 +3,14 @@ mod llm;
 mod models;
 mod offline_audit;
 mod profiles;
+mod rag;
 mod sessions;
 
+use std::sync::Arc;
+
+use llama_cpp_2::llama_backend::LlamaBackend;
 use llm::LlmState;
+use rag::RagState;
 use tauri::{Manager, Theme};
 
 #[tauri::command]
@@ -38,12 +43,21 @@ pub fn run() {
             sessions::delete_session,
             profiles::save_profile,
             profiles::list_profiles,
-            profiles::delete_profile
+            profiles::delete_profile,
+            rag::load_embedding_model,
+            rag::loaded_embedding_model,
+            rag::pick_and_index_folder,
+            rag::list_rag_indexes,
+            rag::delete_rag_index,
+            rag::rag_search
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             let _ = window.set_theme(Some(Theme::Light));
-            app.manage(LlmState::new().expect("failed to init llama backend"));
+            let backend =
+                Arc::new(LlamaBackend::init().expect("failed to init llama backend"));
+            app.manage(LlmState::new(backend.clone()));
+            app.manage(RagState::new(backend));
             Ok(())
         })
         .run(tauri::generate_context!())
