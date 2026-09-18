@@ -2,6 +2,7 @@ mod documents;
 mod llm;
 mod models;
 mod offline_audit;
+mod sessions;
 
 use llm::LlmState;
 use tauri::{Manager, Theme};
@@ -29,7 +30,11 @@ pub fn run() {
             llm::send_message,
             llm::stop_generation,
             offline_audit::offline_audit,
-            documents::pick_document
+            documents::pick_document,
+            sessions::save_session,
+            sessions::list_sessions,
+            sessions::load_session,
+            sessions::delete_session
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
