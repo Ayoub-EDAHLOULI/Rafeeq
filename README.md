@@ -101,7 +101,7 @@ Requires the standard [Tauri prerequisites](https://tauri.app/start/prerequisite
 🚧 Early development. Building incrementally, milestone by milestone:
 
 - [x] Project scaffolding
-- [ ] Model manager + basic local chat
+- [x] Model manager + basic local chat
 - [ ] Offline/air-gap verification tooling
 - [ ] Code-help mode
 - [ ] Document Q&A + summarization

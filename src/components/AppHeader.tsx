@@ -1,3 +1,5 @@
+import OfflineBadge from "./OfflineBadge";
+
 interface AppHeaderProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
@@ -15,6 +17,9 @@ export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
         </div>
         <span className="text-sm font-semibold text-text">Rafeeq</span>
       </div>
+
+      <div className="flex items-center gap-3">
+        <OfflineBadge />
 
       <button
         type="button"
@@ -48,7 +53,8 @@ export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
             />
           </svg>
         )}
-      </button>
+        </button>
+      </div>
     </header>
   );
 }
