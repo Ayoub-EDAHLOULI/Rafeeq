@@ -1,4 +1,5 @@
 import OfflineBadge from "./OfflineBadge";
+import logo from "../assets/logo.png";
 
 interface AppHeaderProps {
   theme: "light" | "dark";
@@ -12,9 +13,7 @@ export default function AppHeader({ theme, onToggleTheme }: AppHeaderProps) {
       className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4"
     >
       <div data-tauri-drag-region className="flex items-center gap-2">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-xs font-bold text-white">
-          R
-        </div>
+        <img src={logo} alt="" className="h-6 w-6 rounded-md" />
         <span className="text-sm font-semibold text-text">Rafeeq</span>
       </div>
 

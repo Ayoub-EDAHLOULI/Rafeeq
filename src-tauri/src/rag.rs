@@ -70,6 +70,14 @@ pub fn load_embedding_model(
     let model = LlamaModel::load_from_file(&state.backend, &path, &model_params)
         .map_err(|e| format!("Failed to load embedding model: {e}"))?;
 
+    if model.chat_template(None).is_ok() {
+        return Err(format!(
+            "{file_name} looks like a chat model (it has a chat template), not an \
+             embedding model. Sideload a dedicated embedding model instead, e.g. \
+             nomic-embed-text."
+        ));
+    }
+
     let backend = &state.backend;
     let inner = EmbeddingModelWithContext::try_new(model, |model| {
         let context_params = LlamaContextParams::default()
