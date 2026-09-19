@@ -23,11 +23,19 @@ const CODE_HELP_SYSTEM_PROMPT =
   "code blocks for any code you write. You cannot execute code or access " +
   "files — only discuss and explain it.";
 
+const NO_FABRICATION_RULE =
+  "Only state facts, numbers, names, and dates that appear explicitly in " +
+  "the provided text. Do not calculate, infer, combine, or introduce any " +
+  "number that is not written in the source. If a question asks for " +
+  "something not directly stated, say it isn't in the document rather " +
+  "than estimating or guessing.";
+
 function documentSystemPrompt(doc: LoadedDocument): string {
   return (
     "You are answering questions about the following document. Base your " +
-    "answers only on its content; say so if the answer isn't in it.\n\n" +
-    `--- ${doc.file_name} ---\n${doc.content}`
+    "answers only on its content; say so if the answer isn't in it. " +
+    NO_FABRICATION_RULE +
+    `\n\n--- ${doc.file_name} ---\n${doc.content}`
   );
 }
 
@@ -44,7 +52,9 @@ function ragSystemPrompt(results: RagResult[]): string {
   return (
     "Answer the question using only the passages below, retrieved from a " +
     "local document index. Cite the source file when relevant, and say " +
-    "so if the passages don't contain the answer.\n\n" +
+    "so if the passages don't contain the answer. " +
+    NO_FABRICATION_RULE +
+    "\n\n" +
     passages
   );
 }
@@ -406,8 +416,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
               </div>
             ) : (
               <p className="text-sm text-subText">
-                No document loaded. Supports .txt, .md, .docx, and .pdf
-                files.
+                No document loaded. Supports .txt, .md, .docx, and .pdf files.
               </p>
             )}
           </div>
