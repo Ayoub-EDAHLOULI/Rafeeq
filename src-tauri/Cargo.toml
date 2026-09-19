@@ -25,6 +25,9 @@ llama-cpp-2 = "0.1.156"
 self_cell = "1.3.0"
 encoding_rs = "0.8.41"
 tauri-plugin-dialog = "2.7.3"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+quick-xml = "0.41.0"
+pdf-extract = "0.12.1"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

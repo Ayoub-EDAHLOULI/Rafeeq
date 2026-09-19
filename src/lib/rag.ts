@@ -13,6 +13,7 @@ export interface RagIndexSummary {
   name: string;
   folder_path: string;
   chunk_count: number;
+  skipped_files?: string[];
 }
 
 export function pickAndIndexFolder(

@@ -26,6 +26,7 @@ export default function RagPanel({
   const [indexName, setIndexName] = useState("");
   const [isIndexing, setIsIndexing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [skippedFiles, setSkippedFiles] = useState<string[]>([]);
 
   function refresh() {
     scanModels()
@@ -59,11 +60,13 @@ export default function RagPanel({
   async function handleIndexFolder() {
     if (!indexName.trim()) return;
     setError(null);
+    setSkippedFiles([]);
     setIsIndexing(true);
     try {
       const summary = await pickAndIndexFolder(indexName.trim());
       if (summary) {
         setIndexName("");
+        setSkippedFiles(summary.skipped_files ?? []);
         refresh();
         onSelectIndex(summary.id);
       }
@@ -87,6 +90,21 @@ export default function RagPanel({
   return (
     <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3">
       {error && <p className="text-xs text-danger">{error}</p>}
+
+      {skippedFiles.length > 0 && (
+        <div className="text-xs text-subText">
+          <p>
+            {skippedFiles.length} file
+            {skippedFiles.length === 1 ? "" : "s"} skipped (no extractable
+            text):
+          </p>
+          <ul className="ml-4 list-disc">
+            {skippedFiles.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div>
         <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-subText">

@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
+use crate::documents::extract_text;
 use crate::models::resolve_models_dir;
 
 const CHUNK_TOKENS: usize = 300;
@@ -186,6 +187,8 @@ pub struct RagIndexSummary {
     name: String,
     folder_path: String,
     chunk_count: usize,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    skipped_files: Vec<String>,
 }
 
 fn resolve_rag_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -228,7 +231,7 @@ fn collect_text_files(dir: &Path) -> Vec<PathBuf> {
             files.extend(collect_text_files(&path));
         } else if matches!(
             path.extension().and_then(|e| e.to_str()),
-            Some("txt") | Some("md")
+            Some("txt") | Some("md") | Some("docx") | Some("pdf")
         ) {
             files.push(path);
         }
@@ -250,21 +253,29 @@ pub async fn pick_and_index_folder(
 
     let files = collect_text_files(&folder_path);
     if files.is_empty() {
-        return Err("No .txt or .md files found in that folder".to_string());
+        return Err("No .txt, .md, or .docx files found in that folder".to_string());
     }
 
     let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
     let loaded = loaded.as_mut().ok_or("No embedding model loaded")?;
 
     let mut chunks = Vec::new();
+    let mut skipped = Vec::new();
     loaded.inner.with_dependent_mut(|model, ctx| -> Result<(), String> {
         for file in &files {
-            let raw = fs::read_to_string(file).map_err(|e| e.to_string())?;
             let source_file = file
                 .file_name()
                 .and_then(|n| n.to_str())
                 .unwrap_or("document")
                 .to_string();
+
+            let raw = match extract_text(file) {
+                Ok(text) => text,
+                Err(e) => {
+                    skipped.push(format!("{source_file}: {e}"));
+                    continue;
+                }
+            };
 
             for chunk in chunk_text(model, &raw)? {
                 let vector = embed_text(model, ctx, &chunk)?;
@@ -277,6 +288,17 @@ pub async fn pick_and_index_folder(
         }
         Ok(())
     })?;
+
+    if chunks.is_empty() {
+        return Err(if skipped.is_empty() {
+            "No text could be extracted from any file in that folder".to_string()
+        } else {
+            format!(
+                "No text could be extracted from any file in that folder:\n{}",
+                skipped.join("\n")
+            )
+        });
+    }
 
     let id = uuid_like();
     let index = RagIndex {
@@ -291,6 +313,7 @@ pub async fn pick_and_index_folder(
         name: index.name.clone(),
         folder_path: index.folder_path.clone(),
         chunk_count: index.chunks.len(),
+        skipped_files: skipped,
     };
 
     let path = index_path(&app, &id)?;
@@ -319,6 +342,7 @@ pub fn list_rag_indexes(app: AppHandle) -> Result<Vec<RagIndexSummary>, String> 
                 name: index.name,
                 folder_path: index.folder_path,
                 chunk_count: index.chunks.len(),
+                skipped_files: Vec::new(),
             });
         }
     }

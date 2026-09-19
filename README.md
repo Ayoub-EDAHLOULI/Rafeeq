@@ -17,16 +17,15 @@ Some development and work environments — corporate VMs, air-gapped networks, r
 - **Local chat** — prompt in, streamed response out, powered by a small quantized model running on CPU
 - **Model manager** — point Rafeeq at a sideloaded `.gguf` file, swap models, see size/quantization info
 - **Code-help mode** — paste or select code, ask questions, get explanations or suggestions (no code execution)
-- **Document Q&A & summarization** — load a local `.txt`/`.md` file and ask questions about its contents or get a summary; long documents are truncated to fit the model's context
-- **Local RAG** — index a folder of `.txt`/`.md` documents with a sideloaded embedding model, then ask questions answered from the most relevant retrieved passages
+- **Document Q&A & summarization** — load a local `.txt`, `.md`, `.docx`, or `.pdf` file and ask questions about its contents or get a summary; long documents are truncated to fit the model's context. Scanned/image-only PDFs with no text layer aren't supported yet (no OCR)
+- **Local RAG** — index a folder of `.txt`/`.md`/`.docx`/`.pdf` documents with a sideloaded embedding model, then ask questions answered from the most relevant retrieved passages
 - **Session history** — conversations are saved automatically and can be resumed from the sidebar
 - **Model profiles** — save named shortcuts to sideloaded models for quick switching
 - **Offline verification** — a hand-maintained allowlist gate plus an in-app indicator confirm no network-capable plugin is registered in the build
 
 ### Planned
 
-- PDF and DOCX support for Document Q&A
-- Integration with [Naskh](#) so scanned/OCR'd documents can flow directly into Rafeeq's context
+- OCR for scanned PDFs, via integration with [Naskh](#) so scanned/OCR'd documents can flow directly into Rafeeq's context
 
 ## Verifiably offline
 
@@ -112,7 +111,7 @@ Core milestones complete, built incrementally:
 - [x] Session history (stretch)
 - [x] Multi-model profiles (stretch)
 
-Next up: PDF/DOCX support for Document Q&A, and packaging a first release build.
+Next up: OCR for scanned PDFs, and packaging a first release build.
 
 ## License
 

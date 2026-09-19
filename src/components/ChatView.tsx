@@ -406,7 +406,8 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
               </div>
             ) : (
               <p className="text-sm text-subText">
-                No document loaded. Supports .txt and .md files.
+                No document loaded. Supports .txt, .md, .docx, and .pdf
+                files.
               </p>
             )}
           </div>
@@ -439,7 +440,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
           </>
         )}
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pr-3">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-sm text-subText">
@@ -454,7 +455,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-xl px-4 py-2 text-sm ${
+                    className={`max-w-[75%] rounded-xl px-4 py-2 text-sm ${
                       message.role === "user"
                         ? "bg-primary text-white"
                         : "bg-card text-text"
