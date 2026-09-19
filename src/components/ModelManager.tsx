@@ -4,6 +4,7 @@ import {
   getLoadedModel,
   getModelsDir,
   loadModel,
+  openModelsDir,
   scanModels,
   unloadModel,
 } from "../lib/scanModels";
@@ -70,6 +71,14 @@ export default function ModelManager({ onModelLoaded }: ModelManagerProps) {
       setLoadError(String(err));
     } finally {
       setLoadingFile(null);
+    }
+  }
+
+  async function handleOpenModelsDir() {
+    try {
+      await openModelsDir();
+    } catch (err) {
+      setLoadError(String(err));
     }
   }
 
@@ -228,13 +237,54 @@ export default function ModelManager({ onModelLoaded }: ModelManagerProps) {
       )}
 
       {state.status === "ready" && state.models.length === 0 && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border py-20 text-center">
-          <p className="text-sm font-medium text-text">No models found</p>
-          <p className="max-w-sm text-sm text-subText">
-            Add .gguf files to your models directory, then refresh to see them
-            here.
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border px-6 py-16 text-center">
+          <p className="text-base font-medium text-text">
+            Rafeeq needs a model to chat with
           </p>
-          <p className="mt-1 max-w-sm break-all font-mono text-xs text-subText">
+          <p className="max-w-md text-sm text-subText">
+            A model is a language-model file that runs entirely on this device —
+            nothing is sent anywhere. Rafeeq doesn't come with one built in, so
+            you'll need to download one yourself and drop it into the folder
+            below.
+          </p>
+
+          <ol className="mt-2 max-w-md list-decimal space-y-1.5 pl-5 text-left text-sm text-subText">
+            <li>
+              Go to{" "}
+              <span className="font-medium text-text">huggingface.co</span> and
+              search for a model with{" "}
+              <span className="font-mono text-xs">GGUF</span> in the name (e.g.
+              "Qwen2.5-0.5B-Instruct-GGUF" for a small, fast option).
+            </li>
+            <li>
+              Download a quantized file — one named like{" "}
+              <span className="font-mono text-xs">*.Q4_K_M.gguf</span> is a good
+              balance of size and quality.
+            </li>
+            <li>
+              Move the downloaded file into the models folder below, then click
+              Refresh.
+            </li>
+          </ol>
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleOpenModelsDir}
+              className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            >
+              Open models folder
+            </button>
+            <button
+              type="button"
+              onClick={load}
+              className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-inputBg"
+            >
+              Refresh
+            </button>
+          </div>
+
+          <p className="mt-1 max-w-md break-all font-mono text-xs text-subText">
             {state.modelsDir}
           </p>
         </div>

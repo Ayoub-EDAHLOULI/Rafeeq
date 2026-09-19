@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local-only model file for the bundled build variant (never committed)
+/models-bundle/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

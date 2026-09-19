@@ -44,6 +44,26 @@ pub fn models_dir(app: AppHandle) -> Result<String, String> {
     Ok(dir.to_string_lossy().to_string())
 }
 
+/// Opens the models directory in the OS's file manager. Uses the platform's
+/// native "reveal in file manager" command directly rather than a plugin,
+/// so this stays a purely local OS call with no added network-capable
+/// surface (see offline_audit).
+#[tauri::command]
+pub fn open_models_dir(app: AppHandle) -> Result<(), String> {
+    let dir = resolve_models_dir(&app)?;
+
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("explorer").arg(&dir).spawn();
+
+    #[cfg(target_os = "macos")]
+    let result = std::process::Command::new("open").arg(&dir).spawn();
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let result = std::process::Command::new("xdg-open").arg(&dir).spawn();
+
+    result.map(|_| ()).map_err(|e| e.to_string())
+}
+
 pub fn resolve_models_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let base = app
         .path()
@@ -52,6 +72,45 @@ pub fn resolve_models_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = base.join("models");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
+}
+
+/// If the user's models folder is empty and this build bundles a starter
+/// model as a resource (see tauri.bundled.conf.json), copies it in on
+/// first run. A no-op in the regular lean build, which has no bundled
+/// resources/models directory.
+pub fn install_bundled_model_if_needed(app: &AppHandle) {
+    let Ok(dir) = resolve_models_dir(app) else {
+        return;
+    };
+
+    let has_model = fs::read_dir(&dir)
+        .map(|entries| {
+            entries.flatten().any(|entry| {
+                entry.path().extension().and_then(|e| e.to_str()) == Some("gguf")
+            })
+        })
+        .unwrap_or(false);
+    if has_model {
+        return;
+    }
+
+    let Ok(resource_dir) = app.path().resource_dir() else {
+        return;
+    };
+    let bundled_models_dir = resource_dir.join("models");
+    let Ok(entries) = fs::read_dir(&bundled_models_dir) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("gguf") {
+            continue;
+        }
+        if let Some(file_name) = path.file_name() {
+            let _ = fs::copy(&path, dir.join(file_name));
+        }
+    }
 }
 
 #[tauri::command]

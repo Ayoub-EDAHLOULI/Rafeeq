@@ -30,6 +30,7 @@ pub fn run() {
             set_window_theme,
             models::scan_models,
             models::models_dir,
+            models::open_models_dir,
             llm::load_model,
             llm::unload_model,
             llm::loaded_model,
@@ -58,6 +59,7 @@ pub fn run() {
                 Arc::new(LlamaBackend::init().expect("failed to init llama backend"));
             app.manage(LlmState::new(backend.clone()));
             app.manage(RagState::new(backend));
+            models::install_bundled_model_if_needed(app.handle());
             Ok(())
         })
         .run(tauri::generate_context!())

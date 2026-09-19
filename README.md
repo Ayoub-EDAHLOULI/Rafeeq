@@ -78,7 +78,10 @@ For local RAG, sideload a second, small embedding model (e.g. `nomic-embed-text-
 
 ### From release
 
-Download the latest installer for your platform from [Releases](#).
+Download the latest installer for your platform from [Releases](#). Two variants are published:
+
+- **Rafeeq** — the standard, lean installer (~20MB). No model included; you sideload one yourself (see [Getting a model](#getting-a-model)). This is the right choice for air-gapped machines, since it doesn't force a large download over a restricted transfer channel.
+- **Rafeeq (with starter model)** — a larger installer (~500MB) that bundles a small starter model (Qwen2.5-0.5B-Instruct, Q4_K_M) and installs it automatically on first launch. Intended for non-technical users on a normal internet-connected machine who don't want to find and sideload a model themselves. Installs side by side with the standard build (separate app identifier), and behaves identically once a model is loaded — you can still add or switch to other models afterward.
 
 ### From source
 
@@ -88,6 +91,8 @@ cd rafeeq-desktop
 npm install
 npm run tauri build
 ```
+
+To build the bundled-starter-model variant yourself: download a `.gguf` model (e.g. Qwen2.5-0.5B-Instruct, Q4_K_M) into a `models-bundle/` folder at the repo root (gitignored, not committed), then run `npm run tauri:build:bundled`.
 
 ## Development
 

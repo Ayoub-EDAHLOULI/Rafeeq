@@ -22,6 +22,10 @@ export function getModelsDir(): Promise<string> {
   return invoke<string>("models_dir");
 }
 
+export function openModelsDir(): Promise<void> {
+  return invoke<void>("open_models_dir");
+}
+
 export function loadModel(fileName: string): Promise<void> {
   return invoke<void>("load_model", { fileName });
 }

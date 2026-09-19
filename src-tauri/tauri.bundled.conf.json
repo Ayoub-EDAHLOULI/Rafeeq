@@ -1,0 +1,16 @@
+{
+  "productName": "rafeeq-desktop-bundled",
+  "identifier": "com.ayoubedahlouli.rafeeq.bundled",
+  "app": {
+    "windows": [
+      {
+        "title": "Rafeeq (with starter model)"
+      }
+    ]
+  },
+  "bundle": {
+    "resources": {
+      "../models-bundle/*.gguf": "models/"
+    }
+  }
+}
