@@ -56,7 +56,7 @@ Recommended default: **[Phi-4-mini-instruct](https://huggingface.co/microsoft/Ph
 
 - **RAM:** 8GB minimum, 16GB recommended
 - **CPU:** any x86 CPU with AVX2 (Intel Haswell / AMD Excavator, 2013+) or Apple Silicon — no GPU required
-- **Disk:** ~20MB for the app, plus the size of whichever model(s) you sideload
+- **Disk:** a few MB for the app (~3MB installer), plus the size of whichever model(s) you sideload
 
 ## Getting a model
 
@@ -64,10 +64,12 @@ Rafeeq needs at least one `.gguf` model file before it can chat.
 
 1. Download a model — e.g. [`Phi-4-mini-instruct-Q4_K_M.gguf`](https://huggingface.co/microsoft/Phi-4-mini-instruct) from Hugging Face on any machine with internet access
 2. Transfer it to the target machine (USB drive, internal file share — whatever your environment allows)
-3. Place it in Rafeeq's model directory:
-   - **Windows:** `%APPDATA%\rafeeq\models\`
-   - **macOS:** `~/Library/Application Support/rafeeq/models/`
-   - **Linux:** `~/.local/share/rafeeq/models/`
+3. Place it in Rafeeq's model directory. The easiest way to find it is the **Open models folder** button on the Models screen; the paths are:
+   - **Windows:** `%LOCALAPPDATA%\com.ayoubedahlouli.rafeeq\models\`
+   - **macOS:** `~/Library/Application Support/com.ayoubedahlouli.rafeeq/models/`
+   - **Linux:** `~/.local/share/com.ayoubedahlouli.rafeeq/models/`
+
+   The starter-model build uses its own folder: replace `com.ayoubedahlouli.rafeeq` with `com.ayoubedahlouli.rafeeq.bundled`.
 4. Launch Rafeeq — it will detect the model automatically in the Model Manager
 
 No internet access is required on the target machine at any point after the file is copied.
@@ -78,16 +80,16 @@ For local RAG, sideload a second, small embedding model (e.g. `nomic-embed-text-
 
 ### From release
 
-Download the latest installer for your platform from [Releases](#). Two variants are published:
+Download the latest installer for your platform from [Releases](https://github.com/Ayoub-EDAHLOULI/Rafeeq/releases) (Windows `.exe` and `.msi` for now). Two variants are published:
 
-- **Rafeeq** — the standard, lean installer (~20MB). No model included; you sideload one yourself (see [Getting a model](#getting-a-model)). This is the right choice for air-gapped machines, since it doesn't force a large download over a restricted transfer channel.
-- **Rafeeq (with starter model)** — a larger installer (~500MB) that bundles a small starter model (Qwen2.5-0.5B-Instruct, Q4_K_M) and installs it automatically on first launch. Intended for non-technical users on a normal internet-connected machine who don't want to find and sideload a model themselves. Installs side by side with the standard build (separate app identifier), and behaves identically once a model is loaded — you can still add or switch to other models afterward.
+- **Rafeeq** — the standard, lean installer (~3MB). No model included; you sideload one yourself (see [Getting a model](#getting-a-model)). This is the right choice for air-gapped machines, since it doesn't force a large download over a restricted transfer channel.
+- **Rafeeq (with starter model)** — a larger installer (~480MB) that bundles a small starter model (Qwen2.5-0.5B-Instruct, Q4_K_M) and installs it automatically on first launch. Intended for non-technical users on a normal internet-connected machine who don't want to find and sideload a model themselves. Installs side by side with the standard build (separate app identifier), and behaves identically once a model is loaded — you can still add or switch to other models afterward.
 
 ### From source
 
 ```bash
-git clone https://github.com/Ayoub-EDAHLOULI/rafeeq-desktop.git
-cd rafeeq-desktop
+git clone https://github.com/Ayoub-EDAHLOULI/Rafeeq.git
+cd Rafeeq
 npm install
 npm run tauri build
 ```
@@ -116,7 +118,7 @@ Core milestones complete, built incrementally:
 - [x] Session history (stretch)
 - [x] Multi-model profiles (stretch)
 
-Next up: OCR for scanned PDFs, and packaging a first release build.
+First release (0.1.0, Windows) published. Next up: OCR for scanned PDFs, and macOS/Linux release builds.
 
 ## License
 

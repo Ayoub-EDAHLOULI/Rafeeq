@@ -261,7 +261,7 @@ pub async fn pick_and_index_folder(
 
     let files = collect_text_files(&folder_path);
     if files.is_empty() {
-        return Err("No .txt, .md, or .docx files found in that folder".to_string());
+        return Err("No .txt, .md, .docx, or .pdf files found in that folder".to_string());
     }
 
     let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
