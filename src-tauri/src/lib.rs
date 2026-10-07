@@ -54,6 +54,8 @@ pub fn run() {
             rag::loaded_embedding_model,
             rag::add_folder,
             rag::index_folder,
+            rag::pause_indexing,
+            rag::discard_index_progress,
             rag::list_rag_indexes,
             rag::delete_rag_index,
             rag::rename_rag_index,

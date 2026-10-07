@@ -3,11 +3,14 @@ import { listen } from "@tauri-apps/api/event";
 import {
   addFolder,
   deleteRagIndex,
+  discardIndexProgress,
   indexFolder,
   listRagIndexes,
+  pauseIndexing,
   renameRagIndex,
   type IndexDoneEvent,
   type IndexErrorEvent,
+  type IndexPausedEvent,
   type IndexProgressEvent,
   type RagIndexSummary,
 } from "../lib/rag";
@@ -15,6 +18,7 @@ import {
 const STATUS_LABEL: Record<RagIndexSummary["status"], string> = {
   not_indexed: "Not indexed",
   indexing: "Indexing",
+  paused: "Paused",
   indexed: "Indexed",
 };
 
@@ -22,6 +26,8 @@ interface FolderCardProps {
   folder: RagIndexSummary;
   progress: IndexProgressEvent | null;
   onIndex: (id: string) => void;
+  onPause: (id: string) => void;
+  onDiscard: (id: string) => void;
   onRemove: (id: string) => void;
   onRename: (id: string, name: string) => void;
 }
@@ -30,11 +36,14 @@ function FolderCard({
   folder,
   progress,
   onIndex,
+  onPause,
+  onDiscard,
   onRemove,
   onRename,
 }: FolderCardProps) {
   const isIndexed = folder.status === "indexed";
   const isIndexing = folder.status === "indexing";
+  const isPaused = folder.status === "paused";
   const [isEditingName, setIsEditingName] = useState(false);
   const [draftName, setDraftName] = useState(folder.name);
 
@@ -97,19 +106,19 @@ function FolderCard({
             className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
               isIndexed
                 ? "bg-primary/10 text-accentFg"
-                : isIndexing
+                : isIndexing || isPaused
                   ? "bg-panel2 text-accentFg"
                   : "bg-panel2 text-subText"
             }`}
           >
             {isIndexed && <span className="h-1.5 w-1.5 rounded-full bg-dot" />}
-            {isIndexing ? "Indexing" : STATUS_LABEL[folder.status]}
+            {STATUS_LABEL[folder.status]}
           </span>
         </div>
         <div className="mt-1 truncate font-mono text-xs text-faint">
           {folder.folder_path}
         </div>
-        {isIndexing && progress && (
+        {(isIndexing || isPaused) && progress && (
           <div className="mt-3 flex items-center gap-2.5">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-panel2">
               <div
@@ -132,18 +141,44 @@ function FolderCard({
             {folder.chunk_count.toLocaleString()} chunks
           </span>
         )}
-        <button
-          type="button"
-          onClick={() => onIndex(folder.id)}
-          disabled={isIndexing}
-          className={`h-11 rounded-lg px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-            isIndexed
-              ? "border border-border text-text hover:bg-inputBg"
-              : "bg-primary text-white hover:opacity-90"
-          }`}
-        >
-          {isIndexing ? "Indexing…" : isIndexed ? "Re-index" : "Index now"}
-        </button>
+        {isIndexing ? (
+          <button
+            type="button"
+            onClick={() => onPause(folder.id)}
+            className="h-11 rounded-lg border border-border px-4 text-sm font-semibold text-text transition-colors hover:bg-inputBg"
+          >
+            Pause
+          </button>
+        ) : isPaused ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onDiscard(folder.id)}
+              className="h-11 rounded-lg border border-border px-4 text-sm font-semibold text-text transition-colors hover:bg-inputBg"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={() => onIndex(folder.id)}
+              className="h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            >
+              Resume
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onIndex(folder.id)}
+            className={`h-11 rounded-lg px-4 text-sm font-semibold transition-colors ${
+              isIndexed
+                ? "border border-border text-text hover:bg-inputBg"
+                : "bg-primary text-white hover:opacity-90"
+            }`}
+          >
+            {isIndexed ? "Re-index" : "Index now"}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onRemove(folder.id)}
@@ -204,6 +239,13 @@ export default function KnowledgePage() {
       refresh();
     });
 
+    const unlistenPaused = listen<IndexPausedEvent>(
+      "rag-index-paused",
+      () => {
+        refresh();
+      },
+    );
+
     const unlistenError = listen<IndexErrorEvent>(
       "rag-index-error",
       (event) => {
@@ -219,6 +261,7 @@ export default function KnowledgePage() {
     return () => {
       unlistenProgress.then((f) => f());
       unlistenDone.then((f) => f());
+      unlistenPaused.then((f) => f());
       unlistenError.then((f) => f());
     };
   }, []);
@@ -250,6 +293,28 @@ export default function KnowledgePage() {
     setError(null);
     try {
       await indexFolder(id);
+      refresh();
+    } catch (err) {
+      setError(String(err));
+    }
+  }
+
+  async function handlePause(id: string) {
+    try {
+      await pauseIndexing(id);
+    } catch (err) {
+      setError(String(err));
+    }
+  }
+
+  async function handleDiscard(id: string) {
+    setError(null);
+    try {
+      await discardIndexProgress(id);
+      setProgressById((prev) => {
+        const { [id]: _removed, ...rest } = prev;
+        return rest;
+      });
       refresh();
     } catch (err) {
       setError(String(err));
@@ -320,6 +385,8 @@ export default function KnowledgePage() {
               folder={folder}
               progress={progressById[folder.id] ?? null}
               onIndex={handleIndex}
+              onPause={handlePause}
+              onDiscard={handleDiscard}
               onRemove={handleRemove}
               onRename={handleRename}
             />

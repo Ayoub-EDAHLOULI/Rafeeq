@@ -16,7 +16,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 9 — Settings page (local JSON store: `<app_local_data_dir>/settings.json`)
 - [x] Step 10 — Knowledge base: folder list and status model
 - [x] Step 11a — Background indexing with progress events
-- [ ] Step 11b — Pause/cancel, thread-limited indexing
+- [x] Step 11b — Pause/cancel, thread-limited indexing
 - [ ] Step 12 — Knowledge indexing settings panel
 - [ ] Step 13 — RAG tab restyle with folder filter pills
 - [ ] Step 14 — RAG no-match state and relevance threshold
@@ -222,14 +222,14 @@ Everything above is MVP. Everything below is the RAG milestone — it depends on
 **Risk:** Was medium-high, as flagged — the fine-grained per-file locking (not just per-chunk, which would've been more invasive for similar benefit) is the mitigation; the compiler itself caught one locking bug during implementation, which is a good sign the lock-scoping is now something the type system can reason about rather than something resting on careful-but-unenforced convention.
 **Commit message:** `Make folder indexing run in the background with progress events`
 
-### Step 11b — Pause/cancel, thread-limited indexing [RAG milestone]
-**Goal:** Add a pause/cancel flag to the background indexing job from 11a, following the `stop_flag`/`AtomicBool` pattern already used for chat generation in `llm.rs`.
-**Files:** `src-tauri/src/rag.rs` (cancellation flag, resumable/discardable partial state), `src/lib/rag.ts`, `src/components/KnowledgePage.tsx`.
-**Approach:** Built as a separate step from 11a deliberately — progress events and cancellation are two independently-testable pieces of a risky change, and splitting them keeps each commit small and bisectable if something regresses.
-**Acceptance criteria:** Pause stops further embedding without losing already-embedded chunks; indexing can resume from where it left off or be discarded entirely.
-**Verify:** Start indexing a folder with 20+ files, click Pause partway through, confirm the chunks embedded so far are retained and the status reflects a paused state (not silently stuck or lost); resume and confirm it continues rather than restarting from zero.
-**Risk:** Medium — mostly state-management risk (ensuring a paused job's partial chunks are neither duplicated on resume nor lost on discard).
-**Commit message:** `Add pause and cancel to background folder indexing`
+### Step 11b — Pause/cancel, thread-limited indexing [RAG milestone] — DONE
+**Goal:** Add a pause/cancel flag to the background indexing job from 11a, following the `stop_flag`/`AtomicBool` pattern already used for chat generation in `llm.rs`, with pause genuinely resumable (not restart-from-zero) per a scope decision made before implementing.
+**Files:** `src-tauri/src/rag.rs` (`RagState` gains `cancel_flags: Mutex<HashMap<String, Arc<AtomicBool>>>`, one flag per in-progress job, keyed by folder id; `RagIndex` gains `completed_files: Vec<String>`; `IndexStatus` gains `Paused`; new `pause_indexing`/`discard_index_progress` commands; `run_indexing` checks the cancel flag between files and, on a paused folder, skips files already in `completed_files` rather than re-embedding them), `src-tauri/src/lib.rs`, `src/lib/rag.ts` (`pauseIndexing`, `discardIndexProgress`, `IndexPausedEvent`), `src/components/KnowledgePage.tsx` (Pause button while indexing; Resume/Discard buttons while paused; listens for the new `rag-index-paused` event), `src/components/RagPanel.tsx` (status display updated for the new `paused` state).
+**Approach:** Used one background thread (not a pool) for the same reason as 11a — embedding is CPU-bound and already parallelizes via `LlamaContextParams`' own thread count, so a pool would add lock contention without real throughput gain; "thread-limited" in this step's title is satisfied by that single-worker design, not a separate limiter. `index_folder` doubles as both "start" and "resume": on entry it filters the folder's files down to whichever aren't yet in `completed_files`, so calling the same command on a paused folder picks up exactly where it left off. Cancellation takes effect between files (checked at the top of each loop iteration, not mid-embed), matching the granularity the plan asked for ("stops after the current file"). A failed resume reverts the folder fully to `NotIndexed` (clearing `completed_files` too), rather than leaving it in a confusing partially-paused-partially-failed state.
+**Verified:** `cargo check`/`cargo build` clean, no warnings. `npx tsc --noEmit` clean, `npm run build` succeeds. Re-read the discard/remove wiring to confirm the Discard button is reachable only from the Paused-status branch (not accidentally exposed elsewhere) and Remove still works regardless of status.
+**Remaining manual verification (for you):** restart `npm run tauri dev` (Rust binary changed). Index a folder with 20+ files, click Pause partway through — confirm the status flips to "Paused" with the chunks embedded so far retained (check the folder's chunk count after resuming/completing matches reality, not inflated or short). Click Resume and confirm it continues from roughly where it paused (the progress counter shouldn't restart from 0 files done) rather than re-embedding everything. Try Discard on a paused folder and confirm it reverts cleanly to "Not indexed" with zero chunks.
+**Risk:** Was medium, as flagged (state-management risk around partial chunks). Mitigated by keeping chunks and their corresponding `completed_files` entries updated together at every write point, so the two can't drift out of sync.
+**Commit message:** `Add pause and resume to background folder indexing`
 
 ### Step 12 — Knowledge indexing settings panel [RAG milestone]
 **Goal:** Expose embedding model, chunk size, overlap, and passages-per-question as configurable settings (global, from step 9's settings store), shown in the Knowledge page's right panel.

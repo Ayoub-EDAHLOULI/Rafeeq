@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use llama_cpp_2::context::params::{LlamaContextParams, LlamaPoolingType};
@@ -37,6 +39,12 @@ struct LoadedEmbeddingModel {
 pub struct RagState {
     backend: Arc<LlamaBackend>,
     loaded: Mutex<Option<LoadedEmbeddingModel>>,
+    /// One cancellation flag per in-progress indexing job, keyed by folder
+    /// id. `pause_indexing` sets the flag; the background indexing loop
+    /// checks it between files and stops cleanly, saving whatever progress
+    /// it has made. Entries are removed once a job finishes, fails, or is
+    /// paused.
+    cancel_flags: Mutex<HashMap<String, Arc<AtomicBool>>>,
 }
 
 // SAFETY: see the identical justification on `llm::LlmState` — all access
@@ -50,6 +58,7 @@ impl RagState {
         Self {
             backend,
             loaded: Mutex::new(None),
+            cancel_flags: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -186,6 +195,7 @@ struct IndexedChunk {
 pub enum IndexStatus {
     NotIndexed,
     Indexing,
+    Paused,
     Indexed,
 }
 
@@ -210,6 +220,11 @@ struct RagIndex {
     chunks: Vec<IndexedChunk>,
     #[serde(default = "unknown_status_marker")]
     status: Option<IndexStatus>,
+    /// Absolute paths of files already embedded into `chunks`, so a resumed
+    /// indexing run (after a pause) only processes the files it hasn't
+    /// gotten to yet instead of re-embedding everything from scratch.
+    #[serde(default)]
+    completed_files: Vec<String>,
 }
 
 fn unknown_status_marker() -> Option<IndexStatus> {
@@ -307,6 +322,7 @@ pub async fn add_folder(app: AppHandle) -> Result<Option<RagIndexSummary>, Strin
         folder_path: folder_path.to_string_lossy().to_string(),
         chunks: Vec::new(),
         status: Some(IndexStatus::NotIndexed),
+        completed_files: Vec::new(),
     };
 
     let summary = RagIndexSummary {
@@ -339,23 +355,36 @@ struct IndexDoneEvent<'a> {
 }
 
 #[derive(Clone, Serialize)]
+struct IndexPausedEvent<'a> {
+    id: &'a str,
+}
+
+#[derive(Clone, Serialize)]
 struct IndexErrorEvent<'a> {
     id: &'a str,
     message: String,
 }
 
+enum IndexingOutcome {
+    Completed { chunk_count: usize },
+    Paused,
+}
+
 /// Embeds every supported file in a previously-added folder (see
 /// `add_folder`) and marks it indexed, running on a background thread so
 /// the command returns immediately; progress is reported via
-/// `rag-index-progress`/`rag-index-done`/`rag-index-error` events, the same
-/// pattern `llm::send_message` uses for chat generation.
+/// `rag-index-progress`/`rag-index-done`/`rag-index-paused`/`rag-index-error`
+/// events, the same pattern `llm::send_message` uses for chat generation.
 ///
-/// The embedding model's mutex is acquired and released once per chunk
+/// Also used to resume a paused job: files already recorded in
+/// `completed_files` are skipped, so only the remaining files are embedded.
+///
+/// The embedding model's mutex is acquired and released once per file
 /// (not held for the whole run), so a `rag_search` against a different,
-/// already-indexed folder is only ever blocked behind a single chunk's
+/// already-indexed folder is only ever blocked behind a single file's
 /// embedding time, not the entire indexing job.
 #[tauri::command]
-pub fn index_folder(app: AppHandle, id: String) -> Result<(), String> {
+pub fn index_folder(app: AppHandle, state: State<RagState>, id: String) -> Result<(), String> {
     let path = index_path(&app, &id)?;
     let raw = fs::read_to_string(&path).map_err(|e| format!("Folder not found: {e}"))?;
     let mut index: RagIndex = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
@@ -364,19 +393,38 @@ pub fn index_folder(app: AppHandle, id: String) -> Result<(), String> {
     let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
     fs::write(&path, json).map_err(|e| e.to_string())?;
 
+    let cancel_flag = Arc::new(AtomicBool::new(false));
+    state
+        .cancel_flags
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(id.clone(), cancel_flag.clone());
+
     std::thread::spawn(move || {
-        let result = run_indexing(&app, &path, &mut index, &id);
+        let result = run_indexing(&app, &path, &mut index, &id, &cancel_flag);
+
+        if let Ok(mut flags) = app.state::<RagState>().cancel_flags.lock() {
+            flags.remove(&id);
+        }
+
         match result {
-            Ok(chunk_count) => {
+            Ok(IndexingOutcome::Completed { chunk_count }) => {
                 let _ = app.emit("rag-index-done", IndexDoneEvent { id: &id, chunk_count });
+            }
+            Ok(IndexingOutcome::Paused) => {
+                let _ = app.emit("rag-index-paused", IndexPausedEvent { id: &id });
             }
             Err(message) => {
                 // Revert to not-indexed on failure so the folder doesn't get
                 // stuck showing "Indexing" forever; any partial progress
                 // (chunks from files processed before the failure) is
-                // discarded rather than saved half-finished.
+                // discarded rather than saved half-finished. A paused job
+                // that later fails to resume keeps its own prior partial
+                // progress intact, since that's written to disk separately
+                // by `run_indexing` before this error path runs.
                 index.status = Some(IndexStatus::NotIndexed);
                 index.chunks.clear();
+                index.completed_files.clear();
                 if let Ok(json) = serde_json::to_string(&index) {
                     let _ = fs::write(&path, json);
                 }
@@ -388,22 +436,64 @@ pub fn index_folder(app: AppHandle, id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Sets the cancellation flag for an in-progress indexing job. The
+/// background loop checks it between files, so this takes effect after the
+/// file currently being embedded finishes, not instantly.
+#[tauri::command]
+pub fn pause_indexing(state: State<RagState>, id: String) -> Result<(), String> {
+    if let Some(flag) = state.cancel_flags.lock().map_err(|e| e.to_string())?.get(&id) {
+        flag.store(true, Ordering::SeqCst);
+    }
+    Ok(())
+}
+
+/// Discards a paused job's partial progress, resetting the folder back to
+/// Not indexed so the next "Index now" starts from scratch.
+#[tauri::command]
+pub fn discard_index_progress(app: AppHandle, id: String) -> Result<(), String> {
+    let path = index_path(&app, &id)?;
+    let raw = fs::read_to_string(&path).map_err(|e| format!("Folder not found: {e}"))?;
+    let mut index: RagIndex = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    index.status = Some(IndexStatus::NotIndexed);
+    index.chunks.clear();
+    index.completed_files.clear();
+    let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())
+}
+
 fn run_indexing(
     app: &AppHandle,
     path: &Path,
     index: &mut RagIndex,
     id: &str,
-) -> Result<usize, String> {
+    cancel_flag: &AtomicBool,
+) -> Result<IndexingOutcome, String> {
     let files = collect_text_files(Path::new(&index.folder_path));
     if files.is_empty() {
         return Err("No .txt, .md, .docx, or .pdf files found in that folder".to_string());
     }
 
+    let already_done: std::collections::HashSet<&String> = index.completed_files.iter().collect();
+    let remaining: Vec<&PathBuf> = files
+        .iter()
+        .filter(|f| !already_done.contains(&f.to_string_lossy().to_string()))
+        .collect();
+
     let state = app.state::<RagState>();
-    let mut chunks = Vec::new();
+    let mut chunks = index.chunks.clone();
+    let mut completed_files = index.completed_files.clone();
     let mut skipped = Vec::new();
 
-    for (done, file) in files.iter().enumerate() {
+    for file in remaining {
+        if cancel_flag.load(Ordering::SeqCst) {
+            index.chunks = chunks;
+            index.completed_files = completed_files;
+            index.status = Some(IndexStatus::Paused);
+            let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
+            fs::write(path, json).map_err(|e| e.to_string())?;
+            return Ok(IndexingOutcome::Paused);
+        }
+
         let source_file = file
             .file_name()
             .and_then(|n| n.to_str())
@@ -414,6 +504,7 @@ fn run_indexing(
             Ok(text) => text,
             Err(e) => {
                 skipped.push(format!("{source_file}: {e}"));
+                completed_files.push(file.to_string_lossy().to_string());
                 continue;
             }
         };
@@ -438,11 +529,13 @@ fn run_indexing(
             })?;
         }
 
+        completed_files.push(file.to_string_lossy().to_string());
+
         let _ = app.emit(
             "rag-index-progress",
             IndexProgressEvent {
                 id,
-                files_done: done + 1,
+                files_done: completed_files.len(),
                 files_total: files.len(),
             },
         );
@@ -461,12 +554,13 @@ fn run_indexing(
 
     let chunk_count = chunks.len();
     index.chunks = chunks;
+    index.completed_files = completed_files;
     index.status = Some(IndexStatus::Indexed);
 
     let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
     fs::write(path, json).map_err(|e| e.to_string())?;
 
-    Ok(chunk_count)
+    Ok(IndexingOutcome::Completed { chunk_count })
 }
 
 #[tauri::command]

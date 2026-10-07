@@ -175,9 +175,11 @@ export default function RagPanel({
                         (
                         {index.status === "indexing"
                           ? "indexing…"
-                          : index.status === "not_indexed"
-                            ? "not indexed"
-                            : `${index.chunk_count} chunks`}
+                          : index.status === "paused"
+                            ? "paused"
+                            : index.status === "not_indexed"
+                              ? "not indexed"
+                              : `${index.chunk_count} chunks`}
                         )
                       </span>
                     </button>
