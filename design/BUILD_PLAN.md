@@ -12,7 +12,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 5 — Models page and First run
 - [x] Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle
 - [x] Step 7 — Session panel (system prompt, temperature, context length)
-- [ ] Step 8 — Document panel: context meter (real tokenizer count) and extracted-text preview
+- [x] Step 8 — Document panel: context meter (real tokenizer count) and extracted-text preview
 - [ ] Step 9 — Settings page (local JSON store, path TBD at implementation time)
 - [ ] Step 10 — Knowledge base: folder list and status model
 - [ ] Step 11a — Background indexing with progress events
@@ -182,12 +182,12 @@ Each step is scoped to be one commit and leaves `npm run tauri dev` working. "Ve
 **Risk:** Was medium (threading a new parameter through the hottest code path) — mitigated by keeping the change additive (`Option<f32>` with a default) and confirmed via a clean full `cargo build`; still worth the manual streaming/Stop re-check above since this is exactly the kind of change that can silently break under real generation load even when it compiles.
 **Commit message:** `Add session panel with live temperature control`
 
-### Step 8 — Document panel: context meter and extracted-text preview [MVP]
+### Step 8 — Document panel: context meter and extracted-text preview [MVP] — DONE
 **Goal:** Surface real token usage (counted with the loaded model's own tokenizer, not a heuristic) and the extracted document text in a right-hand panel.
-**Files:** `src-tauri/src/documents.rs` (return exact token count alongside content), `src/lib/documents.ts`, `src/components/ChatView.tsx`, new `src/components/DocumentPanel.tsx`.
-**Approach:** `pick_document` already tokenizes with the loaded model's tokenizer for truncation — just also return that exact count in `LoadedDocument` rather than adding a second command or estimating. Since this is an exact count from the real tokenizer (not a heuristic like chars/4), the UI shows it as "N / 4,096 tokens" without a "≈" prefix; reserve "≈" for any future count that's genuinely estimated. Drop the design's "1 page" count (not derivable cheaply from plain-text extraction, especially for .txt/.md which have no page concept) — see decision D4.
-**Acceptance criteria:** Panel shows "N / 4,096 tokens" (exact) and a scrollable monospace preview of the extracted text.
-**Verify:** Load a long document that gets truncated, confirm the meter reflects the truncated count and the truncation warning still shows.
+**Files:** `src-tauri/src/documents.rs` (`LoadedDocument` now includes `token_count` and `context_size`), `src-tauri/src/llm.rs` (`truncate_to_token_budget`/`truncate_to_budget` now also return the resulting exact token count — the original count if untruncated, otherwise exactly `budget` — reusing the tokenization already done for truncation rather than tokenizing twice), `src/lib/documents.ts`, `src/components/ChatView.tsx`, new `src/components/DocumentPanel.tsx`.
+**Approach:** No new command — `pick_document` already tokenizes with the loaded model's tokenizer for truncation, so the exact count comes along for free. Since this is an exact count from the real tokenizer (not a heuristic like chars/4), the UI shows it as "N / 4,096 tokens" without a "≈" prefix, per the earlier amendment. Dropped the design's "1 page" count (not derivable cheaply from plain-text extraction, especially for .txt/.md which have no page concept) — see decision D4. The panel is shown whenever `mode === "document"` and a document is loaded, alongside the existing document chip (unchanged).
+**Verified:** `cargo check`/`cargo build` clean, no warnings. `npx tsc --noEmit` clean. `npm run build` succeeds. Confirmed `truncate_to_token_budget` has exactly one caller (`pick_document`), so the signature change didn't silently leave another call site broken.
+**Remaining manual verification (for you):** `npm run tauri dev`, switch to Document mode and load a short document — confirm the panel shows "N / 4,096 tokens" (exact, no "≈") with a progress bar, plus a scrollable monospace preview of the extracted text. Load a long document that gets truncated — confirm the token count shown equals the truncation budget and the existing "truncated" warning in the document chip still appears.
 **Risk:** Low.
 **Commit message:** `Add document context meter and extracted-text preview`
 

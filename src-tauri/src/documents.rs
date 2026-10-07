@@ -19,6 +19,8 @@ pub struct LoadedDocument {
     file_name: String,
     content: String,
     truncated: bool,
+    token_count: usize,
+    context_size: u32,
 }
 
 #[tauri::command]
@@ -46,12 +48,14 @@ pub async fn pick_document(
     let raw = extract_text(&path)?;
 
     let budget = (CONTEXT_SIZE as usize).saturating_sub(RESERVED_TOKENS);
-    let (content, truncated) = state.truncate_to_token_budget(&raw, budget)?;
+    let (content, truncated, token_count) = state.truncate_to_token_budget(&raw, budget)?;
 
     Ok(Some(LoadedDocument {
         file_name,
         content,
         truncated,
+        token_count,
+        context_size: CONTEXT_SIZE,
     }))
 }
 

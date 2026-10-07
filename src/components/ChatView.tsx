@@ -20,6 +20,7 @@ import { ragSearch, type RagResult } from "../lib/rag";
 import MessageContent from "./MessageContent";
 import SessionSidebar from "./SessionSidebar";
 import SessionPanel from "./SessionPanel";
+import DocumentPanel from "./DocumentPanel";
 import RagPanel from "./RagPanel";
 
 type ChatMode = "general" | "code" | "document" | "rag";
@@ -542,6 +543,8 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
           onUnload={handleUnload}
         />
       )}
+
+      {mode === "document" && <DocumentPanel doc={loadedDoc} />}
     </div>
   );
 }

@@ -20,7 +20,7 @@ export default function SessionPanel({
   return (
     <aside
       aria-label="Session settings"
-      className="flex w-[304px] shrink-0 flex-col gap-5 overflow-y-auto border-l border-border bg-card px-5 py-5"
+      className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-l border-border bg-card px-5 py-5"
     >
       <div className="text-[11px] font-semibold uppercase tracking-wide text-faint">
         Session

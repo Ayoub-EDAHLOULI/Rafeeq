@@ -136,9 +136,14 @@ pub fn context_size() -> u32 {
 
 impl LlmState {
     /// Truncates `text` to at most `budget` tokens using the loaded model's
-    /// tokenizer, returning the (possibly shortened) text and whether it was
-    /// truncated. Errors if no model is loaded.
-    pub fn truncate_to_token_budget(&self, text: &str, budget: usize) -> Result<(String, bool), String> {
+    /// tokenizer, returning the (possibly shortened) text, whether it was
+    /// truncated, and the resulting exact token count (the original count if
+    /// untruncated, otherwise `budget`). Errors if no model is loaded.
+    pub fn truncate_to_token_budget(
+        &self,
+        text: &str,
+        budget: usize,
+    ) -> Result<(String, bool, usize), String> {
         let loaded = self.loaded.lock().map_err(|e| e.to_string())?;
         let loaded = loaded.as_ref().ok_or("No model loaded")?;
         loaded
@@ -151,13 +156,13 @@ fn truncate_to_budget(
     model: &LlamaModel,
     text: &str,
     budget: usize,
-) -> Result<(String, bool), String> {
+) -> Result<(String, bool, usize), String> {
     let tokens = model
         .str_to_token(text, AddBos::Never)
         .map_err(|e| format!("Failed to tokenize document: {e}"))?;
 
     if tokens.len() <= budget {
-        return Ok((text.to_string(), false));
+        return Ok((text.to_string(), false, tokens.len()));
     }
 
     let mut decoder = UTF_8.new_decoder();
@@ -169,7 +174,7 @@ fn truncate_to_budget(
         truncated.push_str(&piece);
     }
 
-    Ok((truncated, true))
+    Ok((truncated, true, budget))
 }
 
 #[derive(serde::Deserialize)]
