@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import type { ModelInfo } from "../types/model";
 import { scanModels } from "../lib/scanModels";
 import {
+  addFolder,
   deleteRagIndex,
   getLoadedEmbeddingModel,
+  indexFolder,
   listRagIndexes,
   loadEmbeddingModel,
-  pickAndIndexFolder,
   type RagIndexSummary,
 } from "../lib/rag";
 
@@ -63,8 +64,9 @@ export default function RagPanel({
     setSkippedFiles([]);
     setIsIndexing(true);
     try {
-      const summary = await pickAndIndexFolder(indexName.trim());
-      if (summary) {
+      const added = await addFolder(indexName.trim());
+      if (added) {
+        const summary = await indexFolder(added.id);
         setIndexName("");
         setSkippedFiles(summary.skipped_files ?? []);
         refresh();

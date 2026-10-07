@@ -8,18 +8,23 @@ export function getLoadedEmbeddingModel(): Promise<string | null> {
   return invoke<string | null>("loaded_embedding_model");
 }
 
+export type IndexStatus = "not_indexed" | "indexing" | "indexed";
+
 export interface RagIndexSummary {
   id: string;
   name: string;
   folder_path: string;
   chunk_count: number;
+  status: IndexStatus;
   skipped_files?: string[];
 }
 
-export function pickAndIndexFolder(
-  name: string,
-): Promise<RagIndexSummary | null> {
-  return invoke<RagIndexSummary | null>("pick_and_index_folder", { name });
+export function addFolder(name: string): Promise<RagIndexSummary | null> {
+  return invoke<RagIndexSummary | null>("add_folder", { name });
+}
+
+export function indexFolder(id: string): Promise<RagIndexSummary> {
+  return invoke<RagIndexSummary>("index_folder", { id });
 }
 
 export function listRagIndexes(): Promise<RagIndexSummary[]> {

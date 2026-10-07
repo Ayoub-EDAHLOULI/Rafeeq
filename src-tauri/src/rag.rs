@@ -181,12 +181,46 @@ struct IndexedChunk {
     vector: Vec<f32>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum IndexStatus {
+    NotIndexed,
+    Indexing,
+    Indexed,
+}
+
+fn default_status_for_migration(chunks: &[IndexedChunk]) -> IndexStatus {
+    // Indexes written before `status` existed have no field to deserialize,
+    // so infer it from whether they already have chunks — this is what
+    // makes old indexes load correctly as "Indexed" with no explicit
+    // migration step.
+    if chunks.is_empty() {
+        IndexStatus::NotIndexed
+    } else {
+        IndexStatus::Indexed
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 struct RagIndex {
     id: String,
     name: String,
     folder_path: String,
+    #[serde(default)]
     chunks: Vec<IndexedChunk>,
+    #[serde(default = "unknown_status_marker")]
+    status: Option<IndexStatus>,
+}
+
+fn unknown_status_marker() -> Option<IndexStatus> {
+    None
+}
+
+impl RagIndex {
+    fn resolved_status(&self) -> IndexStatus {
+        self.status
+            .unwrap_or_else(|| default_status_for_migration(&self.chunks))
+    }
 }
 
 #[derive(Serialize)]
@@ -195,6 +229,7 @@ pub struct RagIndexSummary {
     name: String,
     folder_path: String,
     chunk_count: usize,
+    status: IndexStatus,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     skipped_files: Vec<String>,
 }
@@ -247,10 +282,13 @@ fn collect_text_files(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
+/// Lets the user pick a folder and adds it to the knowledge base as
+/// "not indexed" — indexing itself happens separately via `index_folder`,
+/// so a folder can exist and be removed/renamed without requiring an
+/// embedding model to be loaded yet.
 #[tauri::command]
-pub async fn pick_and_index_folder(
+pub async fn add_folder(
     app: AppHandle,
-    state: State<'_, RagState>,
     name: String,
 ) -> Result<Option<RagIndexSummary>, String> {
     let folder_path = app.dialog().file().blocking_pick_folder();
@@ -259,7 +297,45 @@ pub async fn pick_and_index_folder(
     };
     let folder_path = folder_path.into_path().map_err(|e| e.to_string())?;
 
-    let files = collect_text_files(&folder_path);
+    let id = uuid_like();
+    let index = RagIndex {
+        id: id.clone(),
+        name,
+        folder_path: folder_path.to_string_lossy().to_string(),
+        chunks: Vec::new(),
+        status: Some(IndexStatus::NotIndexed),
+    };
+
+    let summary = RagIndexSummary {
+        id: index.id.clone(),
+        name: index.name.clone(),
+        folder_path: index.folder_path.clone(),
+        chunk_count: 0,
+        status: IndexStatus::NotIndexed,
+        skipped_files: Vec::new(),
+    };
+
+    let path = index_path(&app, &id)?;
+    let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())?;
+
+    Ok(Some(summary))
+}
+
+/// Embeds every supported file in a previously-added folder (see
+/// `add_folder`) and marks it indexed. Still a single blocking call for
+/// now — background progress and pause/cancel land in a later step.
+#[tauri::command]
+pub async fn index_folder(
+    app: AppHandle,
+    state: State<'_, RagState>,
+    id: String,
+) -> Result<RagIndexSummary, String> {
+    let path = index_path(&app, &id)?;
+    let raw = fs::read_to_string(&path).map_err(|e| format!("Folder not found: {e}"))?;
+    let mut index: RagIndex = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+
+    let files = collect_text_files(Path::new(&index.folder_path));
     if files.is_empty() {
         return Err("No .txt, .md, .docx, or .pdf files found in that folder".to_string());
     }
@@ -308,27 +384,22 @@ pub async fn pick_and_index_folder(
         });
     }
 
-    let id = uuid_like();
-    let index = RagIndex {
-        id: id.clone(),
-        name,
-        folder_path: folder_path.to_string_lossy().to_string(),
-        chunks,
-    };
+    index.chunks = chunks;
+    index.status = Some(IndexStatus::Indexed);
 
     let summary = RagIndexSummary {
         id: index.id.clone(),
         name: index.name.clone(),
         folder_path: index.folder_path.clone(),
         chunk_count: index.chunks.len(),
+        status: IndexStatus::Indexed,
         skipped_files: skipped,
     };
 
-    let path = index_path(&app, &id)?;
     let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
     fs::write(&path, json).map_err(|e| e.to_string())?;
 
-    Ok(Some(summary))
+    Ok(summary)
 }
 
 #[tauri::command]
@@ -346,6 +417,7 @@ pub fn list_rag_indexes(app: AppHandle) -> Result<Vec<RagIndexSummary>, String> 
         let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
         if let Ok(index) = serde_json::from_str::<RagIndex>(&raw) {
             summaries.push(RagIndexSummary {
+                status: index.resolved_status(),
                 id: index.id,
                 name: index.name,
                 folder_path: index.folder_path,

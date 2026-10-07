@@ -5,6 +5,7 @@ import Rail, { type Section } from "./components/Rail";
 import StatusBar from "./components/StatusBar";
 import ModelManager from "./components/ModelManager";
 import ChatView from "./components/ChatView";
+import KnowledgePage from "./components/KnowledgePage";
 import SettingsPage from "./components/SettingsPage";
 import { getLoadedModel } from "./lib/scanModels";
 import "./App.css";
@@ -40,6 +41,8 @@ function App() {
               onThemePreferenceChange={setPreference}
               loadedModel={activeModel}
             />
+          ) : section === "knowledge" ? (
+            <KnowledgePage />
           ) : section === "models" || !activeModel ? (
             <ModelManager onModelLoaded={handleModelLoaded} />
           ) : (

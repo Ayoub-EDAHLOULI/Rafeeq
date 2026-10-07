@@ -1,4 +1,4 @@
-export type Section = "chat" | "models" | "settings";
+export type Section = "chat" | "models" | "knowledge" | "settings";
 
 interface RailProps {
   active: Section;
@@ -80,6 +80,25 @@ export default function Rail({ active, onNavigate }: RailProps) {
         >
           <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" />
           <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" />
+        </svg>
+      </RailButton>
+      <RailButton
+        label="Knowledge base"
+        isActive={active === "knowledge"}
+        onClick={() => onNavigate("knowledge")}
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 3l9 5-9 5-9-5 9-5z" />
+          <path d="M3 13l9 5 9-5" />
         </svg>
       </RailButton>
       <RailButton
