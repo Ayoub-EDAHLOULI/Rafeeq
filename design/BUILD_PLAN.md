@@ -18,7 +18,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 11a — Background indexing with progress events
 - [x] Step 11b — Pause/cancel, thread-limited indexing
 - [x] Step 12 — Knowledge indexing settings panel
-- [ ] Step 13 — RAG tab restyle with folder filter pills
+- [x] Step 13 — RAG tab restyle with folder filter pills
 - [ ] Step 14 — RAG no-match state and relevance threshold
 
 ## 0. Corrections to design/README.md
@@ -240,11 +240,13 @@ Everything above is MVP. Everything below is the RAG milestone — it depends on
 **Risk:** Was low, as flagged — confirmed by how little code changed; the one real finding (the overlap-vs-chunk-size edge case) was a direct consequence of making previously-fixed values configurable, exactly the kind of thing this step's risk assessment should catch.
 **Commit message:** `Make chunk size, overlap, and passage count configurable`
 
-### Step 13 — RAG tab restyle with folder filter pills [RAG milestone]
+### Step 13 — RAG tab restyle with folder filter pills [RAG milestone] — DONE
 **Goal:** Restyle the RAG mode's inline panel into folder filter pills (reflecting each index's status from step 10) and the sources/passages right panel.
-**Files:** `src/components/ChatView.tsx`, `src/components/RagPanel.tsx` (rewritten), new `src/components/SourcesPanel.tsx`.
-**Acceptance criteria:** Pills show each known folder with its status; disabled pills for not-yet-indexed folders match the design.
-**Risk:** Low, visual/structural once step 10's status model exists.
+**Files:** `src/components/ChatView.tsx` (swaps the old `<details>` passages dropdown for `SourcesPanel`), `src/components/RagPanel.tsx` (rewritten — now just a "Searching" pills row; embedding-model picking and folder-adding, which it used to own, already moved to Knowledge base in step 12, so this component slimmed down rather than growing), new `src/components/SourcesPanel.tsx` (numbered passage cards, matching the mockup).
+**Approach:** No Rust changes needed this step — purely a frontend restyle reading data that steps 10–12 already expose (`listRagIndexes`'s `status` field, the existing `ragSearch` results). Pills are disabled (dashed border) for any status other than `indexed`, selectable otherwise, with the active selection highlighted — listens for `rag-index-done`/`-paused`/`-error` events to refresh the pill list live if a folder's status changes while the RAG tab is open.
+**Verified:** `npx tsc --noEmit` clean, `npm run build` succeeds. Confirmed `cargo check` still clean (expected, since no Rust files changed this step).
+**Remaining manual verification (for you):** `npm run tauri dev`, switch to RAG mode. With a mix of indexed/not-indexed/paused folders in Knowledge base, confirm the pills row shows all of them, only the indexed ones are clickable, and the active one highlights correctly. Ask a question and confirm the right-hand Sources panel shows numbered passage cards with filename and snippet, matching the count from your "Passages per question" setting (step 12).
+**Risk:** Was low, as flagged — confirmed by how little surface area this step actually touched now that steps 10–12 already did the real data-model work.
 **Commit message:** `Restyle RAG tab with folder filter pills and sources panel`
 
 ### Step 14 — RAG no-match state and relevance threshold [RAG milestone]

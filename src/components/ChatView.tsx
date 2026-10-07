@@ -23,6 +23,7 @@ import SessionSidebar from "./SessionSidebar";
 import SessionPanel from "./SessionPanel";
 import DocumentPanel from "./DocumentPanel";
 import RagPanel from "./RagPanel";
+import SourcesPanel from "./SourcesPanel";
 
 type ChatMode = "general" | "code" | "document" | "rag";
 
@@ -440,30 +441,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
         )}
 
         {mode === "rag" && (
-          <>
-            <RagPanel
-              activeIndexId={ragIndexId}
-              onSelectIndex={setRagIndexId}
-            />
-            {ragResults && ragResults.length > 0 && (
-              <details className="mb-4 rounded-lg border border-border bg-card px-4 py-2">
-                <summary className="cursor-pointer text-xs font-medium text-subText">
-                  {ragResults.length} passage
-                  {ragResults.length === 1 ? "" : "s"} used for the last reply
-                </summary>
-                <div className="mt-2 flex flex-col gap-2">
-                  {ragResults.map((result, i) => (
-                    <div key={i} className="text-xs">
-                      <p className="font-mono text-subText">
-                        {result.source_file} · {result.score.toFixed(2)}
-                      </p>
-                      <p className="text-text">{result.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            )}
-          </>
+          <RagPanel activeIndexId={ragIndexId} onSelectIndex={setRagIndexId} />
         )}
 
         <div className="flex-1 overflow-y-auto pr-3">
@@ -557,6 +535,8 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
       )}
 
       {mode === "document" && <DocumentPanel doc={loadedDoc} />}
+
+      {mode === "rag" && <SourcesPanel results={ragResults} />}
     </div>
   );
 }
