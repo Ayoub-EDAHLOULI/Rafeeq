@@ -5,6 +5,7 @@ mod offline_audit;
 mod profiles;
 mod rag;
 mod sessions;
+mod settings;
 mod system_stats;
 
 use std::sync::Arc;
@@ -54,7 +55,11 @@ pub fn run() {
             rag::list_rag_indexes,
             rag::delete_rag_index,
             rag::rag_search,
-            system_stats::system_stats
+            system_stats::system_stats,
+            settings::get_settings,
+            settings::save_settings,
+            settings::delete_all_sessions,
+            settings::app_version
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

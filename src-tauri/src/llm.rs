@@ -18,8 +18,9 @@ use encoding_rs::UTF_8;
 use crate::models::resolve_models_dir;
 
 pub const CONTEXT_SIZE: u32 = 4096;
-const MAX_RESPONSE_TOKENS: usize = 1024;
-const DEFAULT_TEMPERATURE: f32 = 0.8;
+pub const DEFAULT_MAX_RESPONSE_TOKENS: usize = 1024;
+pub const DEFAULT_TEMPERATURE: f32 = 0.8;
+pub const DEFAULT_CPU_THREADS: i32 = 4;
 
 self_cell!(
     struct ModelWithContext {
@@ -81,7 +82,12 @@ struct ChatErrorEvent<'a> {
 }
 
 #[tauri::command]
-pub fn load_model(app: AppHandle, state: State<LlmState>, file_name: String) -> Result<(), String> {
+pub fn load_model(
+    app: AppHandle,
+    state: State<LlmState>,
+    file_name: String,
+    cpu_threads: Option<u32>,
+) -> Result<(), String> {
     let dir = resolve_models_dir(&app)?;
     let path = dir.join(&file_name);
     if !path.is_file() {
@@ -99,10 +105,16 @@ pub fn load_model(app: AppHandle, state: State<LlmState>, file_name: String) -> 
         ));
     }
 
+    let n_threads = cpu_threads
+        .map(|t| t as i32)
+        .unwrap_or(DEFAULT_CPU_THREADS);
+
     let backend = &state.backend;
     let inner = ModelWithContext::try_new(model, |model| {
-        let context_params =
-            LlamaContextParams::default().with_n_ctx(NonZeroU32::new(CONTEXT_SIZE));
+        let context_params = LlamaContextParams::default()
+            .with_n_ctx(NonZeroU32::new(CONTEXT_SIZE))
+            .with_n_threads(n_threads)
+            .with_n_threads_batch(n_threads);
         model
             .new_context(backend, context_params)
             .map_err(|e| format!("Failed to create context: {e}"))
@@ -190,12 +202,14 @@ pub fn send_message(
     request_id: String,
     history: Vec<ChatTurn>,
     temperature: Option<f32>,
+    max_response_tokens: Option<usize>,
 ) -> Result<(), String> {
     if state.loaded.lock().map_err(|e| e.to_string())?.is_none() {
         return Err("No model loaded".to_string());
     }
 
     let temperature = temperature.unwrap_or(DEFAULT_TEMPERATURE);
+    let max_response_tokens = max_response_tokens.unwrap_or(DEFAULT_MAX_RESPONSE_TOKENS);
 
     state.stop_flag.store(false, Ordering::SeqCst);
     let stop_flag = state.stop_flag.clone();
@@ -207,7 +221,7 @@ pub fn send_message(
             let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
             let loaded = loaded.as_mut().ok_or("No model loaded")?;
             loaded.inner.with_dependent_mut(|model, ctx| {
-                generate(model, ctx, &history, temperature, &stop_flag, |token| {
+                generate(model, ctx, &history, temperature, max_response_tokens, &stop_flag, |token| {
                     let _ = app.emit(
                         "chat-token",
                         ChatTokenEvent {
@@ -253,6 +267,7 @@ fn generate(
     ctx: &mut LlamaContext,
     history: &[ChatTurn],
     temperature: f32,
+    max_response_tokens: usize,
     stop_flag: &AtomicBool,
     mut on_token: impl FnMut(String),
 ) -> Result<(), String> {
@@ -311,7 +326,7 @@ fn generate(
 
     let mut n_cur = batch.n_tokens();
 
-    for _ in 0..MAX_RESPONSE_TOKENS {
+    for _ in 0..max_response_tokens {
         if stop_flag.load(Ordering::SeqCst) {
             break;
         }

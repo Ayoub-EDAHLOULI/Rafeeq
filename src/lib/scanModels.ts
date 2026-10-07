@@ -28,8 +28,11 @@ export function openModelsDir(): Promise<void> {
   return invoke<void>("open_models_dir");
 }
 
-export function loadModel(fileName: string): Promise<void> {
-  return invoke<void>("load_model", { fileName });
+export function loadModel(
+  fileName: string,
+  cpuThreads?: number,
+): Promise<void> {
+  return invoke<void>("load_model", { fileName, cpuThreads });
 }
 
 export function unloadModel(): Promise<void> {
@@ -53,8 +56,14 @@ export function sendMessage(
   requestId: string,
   history: ChatTurn[],
   temperature: number,
+  maxResponseTokens?: number,
 ): Promise<void> {
-  return invoke<void>("send_message", { requestId, history, temperature });
+  return invoke<void>("send_message", {
+    requestId,
+    history,
+    temperature,
+    maxResponseTokens,
+  });
 }
 
 export function stopGeneration(): Promise<void> {

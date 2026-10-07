@@ -14,6 +14,7 @@ import {
   saveProfile,
   type ModelProfile,
 } from "../lib/profiles";
+import { getSettings } from "../lib/settings";
 import ModelCard from "./ModelCard";
 import ModelDetailsPanel from "./ModelDetailsPanel";
 import FirstRun from "./FirstRun";
@@ -73,7 +74,8 @@ export default function ModelManager({ onModelLoaded }: ModelManagerProps) {
     setLoadError(null);
     setLoadingFile(model.fileName);
     try {
-      await loadModel(model.fileName);
+      const settings = await getSettings().catch(() => null);
+      await loadModel(model.fileName, settings?.cpu_threads);
       setLoadedFile(model.fileName);
       onModelLoaded(model.fileName);
     } catch (err) {
@@ -105,7 +107,8 @@ export default function ModelManager({ onModelLoaded }: ModelManagerProps) {
     setLoadError(null);
     setLoadingFile(profile.model_file);
     try {
-      await loadModel(profile.model_file);
+      const settings = await getSettings().catch(() => null);
+      await loadModel(profile.model_file, settings?.cpu_threads);
       setLoadedFile(profile.model_file);
       onModelLoaded(profile.model_file);
     } catch (err) {

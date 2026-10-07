@@ -17,6 +17,7 @@ import {
   type SessionSummary,
 } from "../lib/sessions";
 import { ragSearch, type RagResult } from "../lib/rag";
+import { getSettings } from "../lib/settings";
 import MessageContent from "./MessageContent";
 import SessionSidebar from "./SessionSidebar";
 import SessionPanel from "./SessionPanel";
@@ -107,12 +108,21 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
   const [ragResults, setRagResults] = useState<RagResult[] | null>(null);
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
   const [temperature, setTemperature] = useState(0.8);
+  const [maxResponseTokens, setMaxResponseTokens] = useState<
+    number | undefined
+  >(undefined);
   const [contextSize, setContextSize] = useState<number | null>(null);
   const activeRequestId = useRef<string | null>(null);
 
   useEffect(() => {
     getContextSize()
       .then(setContextSize)
+      .catch(() => {});
+    getSettings()
+      .then((settings) => {
+        setTemperature(settings.default_temperature);
+        setMaxResponseTokens(settings.max_response_tokens);
+      })
       .catch(() => {});
   }, []);
 
@@ -238,7 +248,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     setIsGenerating(true);
 
     try {
-      await sendMessage(requestId, history, temperature);
+      await sendMessage(requestId, history, temperature, maxResponseTokens);
     } catch (err) {
       activeRequestId.current = null;
       setIsGenerating(false);

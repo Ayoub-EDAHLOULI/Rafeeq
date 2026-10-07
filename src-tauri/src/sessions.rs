@@ -32,7 +32,7 @@ pub struct SessionSummary {
     updated_at: u64,
 }
 
-fn resolve_sessions_dir(app: &AppHandle) -> Result<PathBuf, String> {
+pub fn resolve_sessions_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let base = app
         .path()
         .app_local_data_dir()

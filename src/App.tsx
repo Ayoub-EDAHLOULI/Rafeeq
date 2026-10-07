@@ -10,7 +10,7 @@ import { getLoadedModel } from "./lib/scanModels";
 import "./App.css";
 
 function App() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, preference, setPreference, toggleTheme } = useTheme();
   const [activeModel, setActiveModel] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("chat");
 
@@ -35,7 +35,11 @@ function App() {
         <Rail active={section} onNavigate={setSection} />
         <main className="min-h-0 flex-1 overflow-y-auto">
           {section === "settings" ? (
-            <SettingsPage />
+            <SettingsPage
+              themePreference={preference}
+              onThemePreferenceChange={setPreference}
+              loadedModel={activeModel}
+            />
           ) : section === "models" || !activeModel ? (
             <ModelManager onModelLoaded={handleModelLoaded} />
           ) : (
