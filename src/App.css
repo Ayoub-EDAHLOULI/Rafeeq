@@ -50,6 +50,12 @@
     color-scheme: dark;
   }
 
+  html {
+    /* Scales the rem-based Tailwind type scale down to a 14px base,
+       matching the design's body size, instead of the browser default 16px. */
+    font-size: 87.5%;
+  }
+
   html,
   body,
   #root {

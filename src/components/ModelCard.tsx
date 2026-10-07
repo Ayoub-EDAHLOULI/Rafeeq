@@ -5,23 +5,36 @@ interface ModelCardProps {
   model: ModelInfo;
   isLoaded: boolean;
   isLoading: boolean;
+  isSelected: boolean;
+  onSelect: (model: ModelInfo) => void;
   onLoad: (model: ModelInfo) => void;
   onUnload: (model: ModelInfo) => void;
   onSaveProfile: (model: ModelInfo) => void;
 }
 
+const TYPE_LABEL: Record<ModelInfo["modelType"], string> = {
+  chat: "Chat",
+  embedding: "Embedding",
+  unknown: "Unknown",
+};
+
 export default function ModelCard({
   model,
   isLoaded,
   isLoading,
+  isSelected,
+  onSelect,
   onLoad,
   onUnload,
   onSaveProfile,
 }: ModelCardProps) {
   return (
     <div
-      className={`group flex items-center gap-4 rounded-xl border bg-card px-5 py-4 transition-colors ${
-        isLoaded ? "border-primary/60" : "border-border hover:border-primary/40"
+      onClick={() => onSelect(model)}
+      className={`group flex cursor-pointer items-center gap-4 rounded-xl border bg-card px-5 py-4 transition-colors ${
+        isLoaded || isSelected
+          ? "border-primary/60"
+          : "border-border hover:border-primary/40"
       }`}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-accentFg">
@@ -55,8 +68,12 @@ export default function ModelCard({
           <p className="truncate font-medium leading-tight text-text">
             {model.name}
           </p>
+          <span className="shrink-0 rounded-full bg-panel2 px-2 py-0.5 text-[11px] font-medium text-subText">
+            {TYPE_LABEL[model.modelType]}
+          </span>
           {isLoaded && (
-            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-accentFg">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-accentFg">
+              <span className="h-1.5 w-1.5 rounded-full bg-dot" />
               Loaded
             </span>
           )}
@@ -79,7 +96,10 @@ export default function ModelCard({
 
       <button
         type="button"
-        onClick={() => onSaveProfile(model)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSaveProfile(model);
+        }}
         title="Save as profile"
         aria-label="Save as profile"
         className="hidden shrink-0 rounded-lg border border-border px-2.5 py-2 text-sm text-subText transition-colors hover:bg-inputBg hover:text-text sm:block"
@@ -90,7 +110,10 @@ export default function ModelCard({
       {isLoaded ? (
         <button
           type="button"
-          onClick={() => onUnload(model)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUnload(model);
+          }}
           className="shrink-0 rounded-lg border border-border px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-inputBg"
         >
           Unload
@@ -98,7 +121,10 @@ export default function ModelCard({
       ) : (
         <button
           type="button"
-          onClick={() => onLoad(model)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onLoad(model);
+          }}
           disabled={isLoading}
           className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
         >

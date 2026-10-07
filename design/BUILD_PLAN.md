@@ -9,7 +9,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 3 — App shell: rail, top bar, status bar
 - [x] Step 4a — RAM/CPU status command (system-wide, visibility-gated polling)
 - [x] Step 4b — Model type detection and caching
-- [ ] Step 5 — Models page and First run
+- [x] Step 5 — Models page and First run
 - [ ] Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle
 - [ ] Step 7 — Session panel (system prompt, temperature, context length)
 - [ ] Step 8 — Document panel: context meter (real tokenizer count) and extracted-text preview
@@ -155,13 +155,13 @@ Each step is scoped to be one commit and leaves `npm run tauri dev` working. "Ve
 **Risk:** Was medium (probing could spike memory with a large model already loaded) — resolved by `vocab_only`, which doesn't load tensor weights at all, so this risk no longer applies. Remaining risk is low: `vocab_only` is a well-established llama.cpp loading mode, already exposed by the `llama-cpp-2` bindings this project already depends on.
 **Commit message:** `Detect and cache model type (chat vs embedding)`
 
-### Step 5 — Models page and First run [MVP]
+### Step 5 — Models page and First run [MVP] — DONE
 **Goal:** Restyle `ModelManager` into the new Models-page layout (list + details panel), restyle the empty state into the First-run layout.
-**Files:** `src/components/ModelManager.tsx` (rewritten), `src/components/ModelCard.tsx` (restyled), new `src/components/ModelDetailsPanel.tsx`, new `src/components/FirstRun.tsx` (extracted from the empty-state branch).
-**Approach:** Keep all existing data flow (`scanModels`, `loadModel`, profiles) — this step is layout and visual, using the type badge from step 4b. "Models to start with" cards are static copy only, no in-app download affordance (see D2).
-**Acceptance criteria:** Visually matches `Models.html`/`FirstRun.html` structure (list, details panel on selection, dashed add-model card). All existing actions (load, unload, save/delete profile, open folder, refresh) still work.
-**Verify:** With zero models (rename models folder temporarily) confirm First-run layout; restore and confirm Models layout with details panel selection.
-**Risk:** Low, mostly visual/structural reshuffling of existing working logic.
+**Files:** `src/components/ModelManager.tsx` (rewritten), `src/components/ModelCard.tsx` (restyled, now selectable, shows the step 4b type badge), new `src/components/ModelDetailsPanel.tsx`, new `src/components/FirstRun.tsx` (extracted from the old empty-state branch).
+**Approach:** Kept all existing data flow (`scanModels`, `loadModel`, profiles) untouched — this step is layout and selection state only. `ModelCard` is now clickable to select it for the details panel, with Load/Unload/Save-profile buttons calling `stopPropagation()` so clicking them doesn't also change the selection. Selection persists across `Refresh` when the previously-selected file is still present, otherwise falls back to the loaded model, then the first model in the list. The details panel shows the model's type (from step 4b's `modelType` field) along with quant/size/file/location, plus a short note that differs for embedding vs. chat models. "Models to start with" cards are static copy only, no in-app download affordance (per D2). The folder-path copy button uses the plain `navigator.clipboard` Web API rather than adding `@tauri-apps/plugin-clipboard-manager`, avoiding a new dependency for one button.
+**Verified:** `npx tsc --noEmit` clean. `npm run build` succeeds; spot-checked the built CSS to confirm non-default-looking utility classes used here (`bg-dot`, `bg-panel2`, `text-faint`, `gap-2.5`/`gap-3.5`) actually compiled to real rules rather than being silently dropped by Tailwind's content scanning.
+**Remaining manual verification (for you):** `npm run tauri dev`. With zero models (temporarily rename the models folder) confirm the First-run layout renders. Restore it and confirm the Models list, details panel on selection (click a card, not its buttons), and the type badges read correctly for your `qwen2.5` (Chat) and `nomic-embed-text` (Embedding) files. Confirm load/unload, save/delete profile, open folder, and refresh all still work as before.
+**Risk:** Low — mostly visual/structural reshuffling of already-working logic; the only new logic is the selection state and its fallback rules.
 **Commit message:** `Restyle Models page and first-run empty state`
 
 ### Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle [MVP]
@@ -274,6 +274,8 @@ Everything above is MVP. Everything below is the RAG milestone — it depends on
 **D8 — Context length: live slider or load-time setting?** The design shows it as a live slider in the session panel (4096, range 512–8192). The current architecture only sets context size at model-load time (`LlamaContextParams::with_n_ctx`, inside `load_model`). Making it live would mean silently reloading the model (multi-second operation, user-visible stall) whenever the slider moves. Recommend treating context length as a Models-page/Settings-page setting that takes effect on next load, with the session panel showing it read-only ("4096, set when the model was loaded") rather than as a live-dragging slider. Flag for confirmation before step 7.
 
 **D9 — Minimum window width behavior below ~1100px.** Not designed, per the README's own admission. Recommend: right-hand panels (session/document/sources) collapse behind a toggle button in the top bar below ~1100px, rather than wrapping below the chat column (wrapping would push the composer off-screen in a 900px-wide window, which is the app's actual documented minimum). This needs a small amount of new responsive layout work in each page that has a right panel (steps 6, 8, 13) — budget time for it there rather than treating it as a separate step. **Amendment:** also set an explicit minimum window size in `src-tauri/tauri.conf.json` matching this layout's real floor. The current `minWidth: 900, minHeight: 600` was chosen before this redesign; it should be re-checked against the shell's actual minimum usable width (rail 64px + sidebar/content/panel at their smallest collapsed states) once step 3's shell exists, and tightened or loosened as needed — likely done as part of step 3 or step 9 rather than a separate step, since it's a one-line config change validated by the same manual resize test already used throughout this plan.
+
+**Out-of-plan fix (after step 5, on user feedback from a live screenshot):** default window size bumped from 1180×760 to 1280×800 (closer to the 1440×800 the mockups are designed at) and minimum from 900×600 to 1000×640, in `src-tauri/tauri.conf.json`. Base font size reduced from the browser default 16px to 14px via `html { font-size: 87.5% }` in `src/App.css`, matching the design's documented 14px body size (`TOKENS.md`) — the live app was reading visibly larger than the mockups since nothing had set this yet. This scales every `rem`-based Tailwind class proportionally rather than needing per-component size changes.
 
 ## 4. Summary of risk areas across the whole plan
 
