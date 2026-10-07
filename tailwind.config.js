@@ -4,6 +4,10 @@ export default {
   darkMode: "class",
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Hanken Grotesk", "Noto Sans Arabic", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "Noto Sans Arabic", "monospace"],
+      },
       colors: {
         background: "var(--background)",
         card: "var(--card)",

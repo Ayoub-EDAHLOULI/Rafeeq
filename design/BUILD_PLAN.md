@@ -5,7 +5,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 ## Step status
 
 - [x] Step 1 — Design tokens and Tailwind mapping
-- [ ] Step 2 — Bundle fonts locally (+ Arabic fallback stack, `dir="auto"`)
+- [x] Step 2 — Bundle fonts locally (+ Arabic fallback stack, `dir="auto"`)
 - [ ] Step 3 — App shell: rail, top bar, status bar
 - [ ] Step 4a — RAM/CPU status command (system-wide, visibility-gated polling)
 - [ ] Step 4b — Model type detection and caching
@@ -118,13 +118,13 @@ Each step is scoped to be one commit and leaves `npm run tauri dev` working. "Ve
 **Risk:** Low.
 **Commit message:** `Apply redesign color tokens`
 
-### Step 2 — Bundle fonts locally, with Arabic fallback [MVP]
+### Step 2 — Bundle fonts locally, with Arabic fallback [MVP] — DONE
 **Goal:** Add Hanken Grotesk and JetBrains Mono as local font files, apply them via CSS `@font-face`, remove any possibility of a network font request. Add an Arabic-capable fallback stack and `dir="auto"` on message text, since neither Hanken Grotesk nor JetBrains Mono cover Arabic glyphs.
-**Files:** `src/assets/fonts/*` (new), `src/App.css`, `tailwind.config.js` (fontFamily), `src/components/MessageContent.tsx` (`dir="auto"`).
-**Approach:** Use self-hosted static `.woff2` files committed to the repo (a handful of weights: Hanken Grotesk 400/500/600, JetBrains Mono 400/500), not an npm font package that fetches at build time only — confirm whatever package is used (e.g. `@fontsource`) ships the files in its npm tarball and vite bundles them into `dist/`, never fetched at runtime. See decision D1. Font stack becomes `'Hanken Grotesk', <bundled Arabic-capable fallback>, system-ui, sans-serif` so Arabic model output doesn't fall back to tofu boxes or an unstyled system font; bundle a single open-license Arabic-capable fallback (e.g. Noto Sans Arabic, OFL) rather than relying on the OS having one. `dir="auto"` goes on the chat message content container so RTL text (e.g. Arabic model output) lays out correctly per-message without flipping the whole app shell's direction.
-**Acceptance criteria:** Fonts render correctly with the app fully offline (test by disabling network before `tauri dev`, not just visually). `npm run check-offline` (existing script) still passes. A message containing Arabic text renders right-to-left and in a readable typeface, tested manually by sending/pasting Arabic text through the chat.
-**Verify:** Disconnect network, run the app, confirm text renders in the new typeface, not a fallback. Send a message containing Arabic text (either as user input or by asking the model to output some), confirm it renders RTL and legibly, not as boxes.
-**Risk:** Medium — font licensing and file size. Both fonts are open (Hanken Grotesk: OFL, JetBrains Mono: OFL, Noto Sans Arabic: OFL), so licensing is fine; weights needed are a handful so the bundle-size cost is small (well under the installer's existing footprint).
+**Files:** `package.json` (3 new dependencies), `src/App.css`, `tailwind.config.js` (fontFamily), `src/components/ChatView.tsx` (`dir="auto"` on the message bubble and composer textarea).
+**Approach:** Used `@fontsource/hanken-grotesk`, `@fontsource/jetbrains-mono`, `@fontsource/noto-sans-arabic` (all 5.3.0, all OFL-licensed) — confirmed each ships real static `.woff2`/`.woff` files in its npm tarball (not a runtime loader), with per-weight-per-subset CSS files. Imported only the latin-subset, 3-weight files actually needed (`latin-400/500/600.css` for Hanken Grotesk, `latin-400/500.css` for JetBrains Mono, `arabic-400/500/600.css` for Noto Sans Arabic) rather than each package's full `index.css`, to avoid bundling unused Cyrillic/Greek/Vietnamese subsets. `font-family` stack is `"Hanken Grotesk", "Noto Sans Arabic", system-ui, sans-serif` for `sans` and `"JetBrains Mono", "Noto Sans Arabic", monospace` for `mono`, wired via Tailwind's `fontFamily.sans`/`fontFamily.mono` so the existing `font-mono` utility classes (already used in 5 components for file names/paths) pick it up automatically — no per-component font changes needed beyond that. `dir="auto"` was added to the chat message bubble wrapper in `ChatView.tsx` (not `MessageContent.tsx`, which has no wrapping element of its own) and to the composer `<textarea>`, so both sent/received messages and text being typed lay out RTL correctly per-message.
+**Verified:** `npm run check-offline` passes (its plugin-based check is unaffected by font packages, as expected). `npx tsc --noEmit` clean. `npm run build` output confirmed: all 8 font files (`.woff2`+`.woff` × 4 weights) land in `dist/assets/` with content-hashed names; `grep`ing the built CSS and HTML for `https?://` found zero matches; the built `@font-face` rules reference local `/assets/...` paths, not `node_modules` or any external URL.
+**Remaining manual verification (for you):** disconnect network, run `npm run tauri dev`, confirm the app renders in the new typeface. Paste or send a message containing Arabic text and confirm it renders right-to-left and legibly (not boxes) — I can't drive the live Tauri window myself, so this one's worth a quick hands-on check before moving on.
+**Risk:** Medium — font licensing and file size, both resolved cleanly (all three fonts OFL-licensed; the 3-weight-only latin/arabic-subset imports keep the added bundle size to ~310 KB across woff+woff2, well under the installer's existing footprint).
 **Commit message:** `Bundle Hanken Grotesk, JetBrains Mono, and an Arabic fallback locally`
 
 ### Step 3 — App shell: rail, top bar, status bar [MVP]

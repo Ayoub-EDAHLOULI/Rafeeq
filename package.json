@@ -12,6 +12,9 @@
     "tauri:build:bundled": "tauri build --config src-tauri/tauri.bundled.conf.json"
   },
   "dependencies": {
+    "@fontsource/hanken-grotesk": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/noto-sans-arabic": "^5.3.0",
     "@tauri-apps/api": "^2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

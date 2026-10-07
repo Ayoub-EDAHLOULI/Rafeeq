@@ -464,6 +464,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
+                    dir="auto"
                     className={`max-w-[75%] rounded-xl px-4 py-2 text-sm ${
                       message.role === "user"
                         ? "bg-primary text-white"
@@ -493,6 +494,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
 
         <div className="flex items-end gap-2 border-t border-border pt-4">
           <textarea
+            dir="auto"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
