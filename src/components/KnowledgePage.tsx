@@ -14,6 +14,7 @@ import {
   type IndexProgressEvent,
   type RagIndexSummary,
 } from "../lib/rag";
+import KnowledgeSettingsPanel from "./KnowledgeSettingsPanel";
 
 const STATUS_LABEL: Record<RagIndexSummary["status"], string> = {
   not_indexed: "Not indexed",
@@ -332,67 +333,71 @@ export default function KnowledgePage() {
   }
 
   return (
-    <div className="flex h-full flex-col gap-5 overflow-y-auto px-9 py-7">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[1.75rem] font-semibold tracking-tight text-text">
-            Knowledge base
-          </h1>
-          <p className="mt-1.5 max-w-xl text-subText">
-            Index folders of documents on this device, then ask questions
-            about them in the RAG tab. Supported files: .txt, .md, .docx,
-            .pdf.
-          </p>
+    <div className="flex h-full">
+      <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-9 py-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[1.75rem] font-semibold tracking-tight text-text">
+              Knowledge base
+            </h1>
+            <p className="mt-1.5 max-w-xl text-subText">
+              Index folders of documents on this device, then ask questions
+              about them in the RAG tab. Supported files: .txt, .md, .docx,
+              .pdf.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAddFolder}
+            disabled={isAdding}
+            className="flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Add folder
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleAddFolder}
-          disabled={isAdding}
-          className="flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Add folder
-        </button>
+
+        {error && (
+          <div className="rounded-lg border border-danger/40 bg-danger/5 px-4 py-3 text-sm text-danger">
+            {error}
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-sm text-subText">Loading…</p>
+          </div>
+        ) : folders.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-6 py-16 text-center">
+            <p className="text-base font-medium text-text">
+              No folders yet
+            </p>
+            <p className="max-w-md text-sm text-subText">
+              Add a folder of documents to start building a searchable
+              knowledge base for the RAG tab.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {folders.map((folder) => (
+              <FolderCard
+                key={folder.id}
+                folder={folder}
+                progress={progressById[folder.id] ?? null}
+                onIndex={handleIndex}
+                onPause={handlePause}
+                onDiscard={handleDiscard}
+                onRemove={handleRemove}
+                onRename={handleRename}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-danger/40 bg-danger/5 px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-subText">Loading…</p>
-        </div>
-      ) : folders.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-6 py-16 text-center">
-          <p className="text-base font-medium text-text">
-            No folders yet
-          </p>
-          <p className="max-w-md text-sm text-subText">
-            Add a folder of documents to start building a searchable
-            knowledge base for the RAG tab.
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {folders.map((folder) => (
-            <FolderCard
-              key={folder.id}
-              folder={folder}
-              progress={progressById[folder.id] ?? null}
-              onIndex={handleIndex}
-              onPause={handlePause}
-              onDiscard={handleDiscard}
-              onRemove={handleRemove}
-              onRename={handleRename}
-            />
-          ))}
-        </div>
-      )}
+      <KnowledgeSettingsPanel />
     </div>
   );
 }

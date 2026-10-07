@@ -17,7 +17,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 10 — Knowledge base: folder list and status model
 - [x] Step 11a — Background indexing with progress events
 - [x] Step 11b — Pause/cancel, thread-limited indexing
-- [ ] Step 12 — Knowledge indexing settings panel
+- [x] Step 12 — Knowledge indexing settings panel
 - [ ] Step 13 — RAG tab restyle with folder filter pills
 - [ ] Step 14 — RAG no-match state and relevance threshold
 
@@ -231,12 +231,13 @@ Everything above is MVP. Everything below is the RAG milestone — it depends on
 **Risk:** Was medium, as flagged (state-management risk around partial chunks). Mitigated by keeping chunks and their corresponding `completed_files` entries updated together at every write point, so the two can't drift out of sync.
 **Commit message:** `Add pause and resume to background folder indexing`
 
-### Step 12 — Knowledge indexing settings panel [RAG milestone]
+### Step 12 — Knowledge indexing settings panel [RAG milestone] — DONE
 **Goal:** Expose embedding model, chunk size, overlap, and passages-per-question as configurable settings (global, from step 9's settings store), shown in the Knowledge page's right panel.
-**Files:** `src-tauri/src/rag.rs` (`CHUNK_TOKENS`/`CHUNK_OVERLAP_TOKENS` become parameters), `src-tauri/src/settings.rs`, `src/components/KnowledgePage.tsx`.
-**Acceptance criteria:** Changing chunk size/overlap only affects future indexing runs (existing indexes keep their original chunking until re-indexed, matching the design's own "changing it means re-indexing" copy).
-**Verify:** Change chunk size, re-index an existing folder, confirm new chunk count differs from before.
-**Risk:** Low, mostly plumbing once steps 11a/11b land.
+**Files:** `src-tauri/src/rag.rs` (`chunk_text` takes `chunk_tokens`/`chunk_overlap_tokens` parameters instead of reading constants directly — the constants became `pub DEFAULT_CHUNK_TOKENS`/`DEFAULT_CHUNK_OVERLAP_TOKENS`/`DEFAULT_PASSAGES_PER_QUESTION` for `settings.rs` to use as fallback defaults; `index_folder` reads `chunk_size`/`chunk_overlap` from settings once before spawning its background thread), `src-tauri/src/settings.rs` (`AppSettings` gains `chunk_size`, `chunk_overlap`, `passages_per_question`), `src/lib/settings.ts`, `src/components/ChatView.tsx` (RAG search's passage count now comes from settings instead of a hardcoded `5`), new `src/components/KnowledgeSettingsPanel.tsx`, `src/components/KnowledgePage.tsx` (restructured into a two-pane layout to host it, matching the other pages' pattern).
+**Approach:** `rag.rs` and `settings.rs` have a function-level circular `use` (settings reads rag's `DEFAULT_*` constants for its own defaults; rag reads settings' `get_settings` to apply them) — confirmed this compiles fine, since Rust only forbids circular *type* definitions, not circular function calls across modules. Found and fixed a real bug while wiring configurable chunk size/overlap: the chunking loop's `start = end.saturating_sub(chunk_overlap_tokens)` could infinite-loop if a user's overlap setting were ever ≥ their chunk size (now reachable via UI sliders, where it wasn't with fixed constants) — added a guard so `start` always advances by at least one token. Verified this guard is a no-op for the existing default values (300/50), so no behavior change for anyone who hasn't touched the new sliders.
+**Verified:** `cargo check`/`cargo build` clean, no warnings. `npx tsc --noEmit` clean, `npm run build` succeeds. Manually traced that `chunk_size`/`chunk_overlap` are only read at the start of a fresh `index_folder` call, so an already-`Indexed` folder's stored `chunks` are untouched by a settings change until it's actually re-indexed — matching the acceptance criteria without needing a dedicated test for it.
+**Remaining manual verification (for you):** restart `npm run tauri dev` (Rust binary changed). Open Knowledge base, confirm the new right-hand panel shows embedding model selection, chunk size/overlap/passages-per-question sliders. Pick a very small chunk size and large overlap (e.g. 100 and 200) to intentionally hit the edge case, index a folder, and confirm it completes instead of hanging. Change chunk size, re-index an already-indexed folder, and confirm its chunk count changes from before. In RAG mode, confirm the number of source passages shown matches your "Passages per question" setting.
+**Risk:** Was low, as flagged — confirmed by how little code changed; the one real finding (the overlap-vs-chunk-size edge case) was a direct consequence of making previously-fixed values configurable, exactly the kind of thing this step's risk assessment should catch.
 **Commit message:** `Make chunk size, overlap, and passage count configurable`
 
 ### Step 13 — RAG tab restyle with folder filter pills [RAG milestone]

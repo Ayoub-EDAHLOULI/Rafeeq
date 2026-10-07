@@ -17,9 +17,11 @@ use tauri_plugin_dialog::DialogExt;
 
 use crate::documents::extract_text;
 use crate::models::resolve_models_dir;
+use crate::settings::get_settings;
 
-const CHUNK_TOKENS: usize = 300;
-const CHUNK_OVERLAP_TOKENS: usize = 50;
+pub const DEFAULT_CHUNK_TOKENS: usize = 300;
+pub const DEFAULT_CHUNK_OVERLAP_TOKENS: usize = 50;
+pub const DEFAULT_PASSAGES_PER_QUESTION: usize = 5;
 const EMBED_CONTEXT_SIZE: u32 = 512;
 
 self_cell!(
@@ -150,7 +152,12 @@ fn normalize(v: &[f32]) -> Vec<f32> {
     v.iter().map(|x| x / norm).collect()
 }
 
-fn chunk_text(model: &LlamaModel, text: &str) -> Result<Vec<String>, String> {
+fn chunk_text(
+    model: &LlamaModel,
+    text: &str,
+    chunk_tokens: usize,
+    chunk_overlap_tokens: usize,
+) -> Result<Vec<String>, String> {
     let tokens = model
         .str_to_token(text, AddBos::Never)
         .map_err(|e| format!("Failed to tokenize for chunking: {e}"))?;
@@ -164,7 +171,7 @@ fn chunk_text(model: &LlamaModel, text: &str) -> Result<Vec<String>, String> {
     let mut decoder = encoding_rs::UTF_8.new_decoder();
 
     while start < tokens.len() {
-        let end = (start + CHUNK_TOKENS).min(tokens.len());
+        let end = (start + chunk_tokens).min(tokens.len());
         let mut chunk = String::new();
         for token in &tokens[start..end] {
             let piece = model
@@ -177,7 +184,10 @@ fn chunk_text(model: &LlamaModel, text: &str) -> Result<Vec<String>, String> {
         if end == tokens.len() {
             break;
         }
-        start = end.saturating_sub(CHUNK_OVERLAP_TOKENS);
+        // Guard against overlap >= chunk size, which would stall `start`
+        // and loop forever — always advance by at least one token.
+        let next_start = end.saturating_sub(chunk_overlap_tokens);
+        start = if next_start > start { next_start } else { start + 1 };
     }
 
     Ok(chunks)
@@ -389,6 +399,10 @@ pub fn index_folder(app: AppHandle, state: State<RagState>, id: String) -> Resul
     let raw = fs::read_to_string(&path).map_err(|e| format!("Folder not found: {e}"))?;
     let mut index: RagIndex = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
 
+    let settings = get_settings(app.clone())?;
+    let chunk_size = settings.chunk_size();
+    let chunk_overlap = settings.chunk_overlap();
+
     index.status = Some(IndexStatus::Indexing);
     let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
     fs::write(&path, json).map_err(|e| e.to_string())?;
@@ -401,7 +415,15 @@ pub fn index_folder(app: AppHandle, state: State<RagState>, id: String) -> Resul
         .insert(id.clone(), cancel_flag.clone());
 
     std::thread::spawn(move || {
-        let result = run_indexing(&app, &path, &mut index, &id, &cancel_flag);
+        let result = run_indexing(
+            &app,
+            &path,
+            &mut index,
+            &id,
+            &cancel_flag,
+            chunk_size,
+            chunk_overlap,
+        );
 
         if let Ok(mut flags) = app.state::<RagState>().cancel_flags.lock() {
             flags.remove(&id);
@@ -467,6 +489,8 @@ fn run_indexing(
     index: &mut RagIndex,
     id: &str,
     cancel_flag: &AtomicBool,
+    chunk_size: usize,
+    chunk_overlap: usize,
 ) -> Result<IndexingOutcome, String> {
     let files = collect_text_files(Path::new(&index.folder_path));
     if files.is_empty() {
@@ -517,7 +541,7 @@ fn run_indexing(
             let mut guard = state.loaded.lock().map_err(|e| e.to_string())?;
             let loaded = guard.as_mut().ok_or("No embedding model loaded")?;
             loaded.inner.with_dependent_mut(|model, ctx| -> Result<(), String> {
-                for chunk in chunk_text(model, &raw)? {
+                for chunk in chunk_text(model, &raw, chunk_size, chunk_overlap)? {
                     let vector = embed_text(model, ctx, &chunk)?;
                     chunks.push(IndexedChunk {
                         source_file: source_file.clone(),

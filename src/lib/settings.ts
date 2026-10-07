@@ -8,6 +8,9 @@ export interface AppSettings {
   cpu_threads: number;
   max_response_tokens: number;
   default_temperature: number;
+  chunk_size: number;
+  chunk_overlap: number;
+  passages_per_question: number;
 }
 
 export function getSettings(): Promise<AppSettings> {

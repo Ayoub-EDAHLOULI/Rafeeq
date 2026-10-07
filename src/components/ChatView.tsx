@@ -111,6 +111,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
   const [maxResponseTokens, setMaxResponseTokens] = useState<
     number | undefined
   >(undefined);
+  const [passagesPerQuestion, setPassagesPerQuestion] = useState(5);
   const [contextSize, setContextSize] = useState<number | null>(null);
   const activeRequestId = useRef<string | null>(null);
 
@@ -122,6 +123,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
       .then((settings) => {
         setTemperature(settings.default_temperature);
         setMaxResponseTokens(settings.max_response_tokens);
+        setPassagesPerQuestion(settings.passages_per_question);
       })
       .catch(() => {});
   }, []);
@@ -220,7 +222,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
 
     if (mode === "rag" && ragIndexId) {
       try {
-        const results = await ragSearch(ragIndexId, prompt, 5);
+        const results = await ragSearch(ragIndexId, prompt, passagesPerQuestion);
         setRagResults(results);
         turnSystemPrompt = ragSystemPrompt(results);
       } catch (err) {
