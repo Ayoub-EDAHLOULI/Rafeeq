@@ -1,5 +1,4 @@
 import OfflineBadge from "./OfflineBadge";
-import logo from "../assets/logo.png";
 
 interface TopBarProps {
   theme: "light" | "dark";
@@ -19,10 +18,7 @@ export default function TopBar({
       data-tauri-drag-region
       className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4"
     >
-      <div data-tauri-drag-region className="flex items-center gap-2">
-        <img src={logo} alt="" className="h-6 w-6 rounded-md" />
-        <span className="text-sm font-semibold text-text">Rafeeq</span>
-      </div>
+      <div data-tauri-drag-region className="flex-1" />
 
       <button
         type="button"
@@ -40,7 +36,7 @@ export default function TopBar({
         </span>
       </button>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-1 items-center justify-end gap-3">
         <OfflineBadge />
 
         <button
