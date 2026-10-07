@@ -7,7 +7,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 1 — Design tokens and Tailwind mapping
 - [x] Step 2 — Bundle fonts locally (+ Arabic fallback stack, `dir="auto"`)
 - [x] Step 3 — App shell: rail, top bar, status bar
-- [ ] Step 4a — RAM/CPU status command (system-wide, visibility-gated polling)
+- [x] Step 4a — RAM/CPU status command (system-wide, visibility-gated polling)
 - [ ] Step 4b — Model type detection and caching
 - [ ] Step 5 — Models page and First run
 - [ ] Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle
@@ -137,12 +137,12 @@ Each step is scoped to be one commit and leaves `npm run tauri dev` working. "Ve
 **Risk:** Medium — this is the biggest structural change so far. Mitigated by keeping `ModelManager` and `ChatView` internals completely untouched; only their mounting point in `App.tsx` changed.
 **Commit message:** `Add section navigation shell with icon rail and status bar`
 
-### Step 4a — RAM/CPU status command [MVP]
+### Step 4a — RAM/CPU status command [MVP] — DONE
 **Goal:** New Rust command returning system-wide RAM used/total and CPU %, polled by the status bar only while the window is visible/focused.
-**Files:** `src-tauri/src/system_stats.rs` (new), `src-tauri/Cargo.toml` (new dependency), `src-tauri/src/lib.rs`, `src/lib/systemStats.ts` (new), `src/components/StatusBar.tsx`.
-**Approach:** See decision D3 — use `sysinfo` crate, poll every 2s from the frontend via `setInterval`, gated by the Page Visibility API (`document.visibilityState`) so polling stops when the window is minimized or in the background, and restarts on focus. Reads system-wide RAM used/total (matching the design's "RAM 1.4 / 8 GB" framing — total machine memory, not just this process) and system-wide CPU %, not a Rust-side push loop.
-**Acceptance criteria:** Status bar shows live system RAM (used/total) and CPU %, values change plausibly during generation vs idle, and polling visibly stops (no network/CPU activity from this feature) when the window is minimized.
-**Verify:** Load a model, send a message, watch CPU% rise during generation and RAM stay roughly stable; confirm no visible stutter in token streaming while polling runs; minimize the window and confirm (via a log or breakpoint) polling pauses, then resumes on restore.
+**Files:** `src-tauri/src/system_stats.rs` (new), `src-tauri/Cargo.toml` (added `sysinfo = "0.39.6"`), `src-tauri/src/lib.rs`, `src/lib/systemStats.ts` (new), `src/components/StatusBar.tsx`.
+**Approach:** See decision D3 — `sysinfo` crate's `System` is held in Tauri-managed state (`SystemStatsState`, a `Mutex<System>`) across calls rather than recreated per-call, since `sysinfo` computes CPU usage as a delta between refreshes — a fresh `System`'s first reading would be meaningless. The frontend's 2s poll interval is well past `sysinfo`'s documented 200ms minimum refresh spacing, so no artificial delay was needed in the command itself. Polling uses `setInterval` gated by `document.visibilitychange`/`document.visibilityState`, starting on mount if visible and stopping/restarting as visibility changes, with cleanup on unmount. Reads system-wide `used_memory()`/`total_memory()` (bytes) and `global_cpu_usage()` (aggregate %), not per-process figures, matching the design's "RAM 1.4 / 8 GB" framing.
+**Verified:** `cargo check` and `cargo build` both clean. `npx tsc --noEmit` clean. `npm run check-offline` still passes (sysinfo is a local-syscall crate, not a network-capable Tauri plugin, so correctly doesn't trip the check). `npm run build` succeeds.
+**Remaining manual verification (for you):** `npm run tauri dev`, confirm the status bar shows live RAM used/total and CPU% that update every ~2s. Load a model and send a message, watch CPU% rise during generation. Minimize the window, wait a few seconds, then restore it and confirm the numbers resume updating (rather than having drifted/frozen) — this is the one behavior I can't verify without driving the live window myself.
 **Risk:** Low. `sysinfo` is a well-established, pure-Rust, no-network crate.
 **Commit message:** `Add live system RAM and CPU readings to the status bar`
 

@@ -5,12 +5,14 @@ mod offline_audit;
 mod profiles;
 mod rag;
 mod sessions;
+mod system_stats;
 
 use std::sync::Arc;
 
 use llama_cpp_2::llama_backend::LlamaBackend;
 use llm::LlmState;
 use rag::RagState;
+use system_stats::SystemStatsState;
 use tauri::{Manager, Theme};
 
 #[tauri::command]
@@ -50,7 +52,8 @@ pub fn run() {
             rag::pick_and_index_folder,
             rag::list_rag_indexes,
             rag::delete_rag_index,
-            rag::rag_search
+            rag::rag_search,
+            system_stats::system_stats
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
@@ -59,6 +62,7 @@ pub fn run() {
                 Arc::new(LlamaBackend::init().expect("failed to init llama backend"));
             app.manage(LlmState::new(backend.clone()));
             app.manage(RagState::new(backend));
+            app.manage(SystemStatsState::new());
             models::install_bundled_model_if_needed(app.handle());
             Ok(())
         })
