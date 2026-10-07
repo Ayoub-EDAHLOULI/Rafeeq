@@ -19,7 +19,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 11b — Pause/cancel, thread-limited indexing
 - [x] Step 12 — Knowledge indexing settings panel
 - [x] Step 13 — RAG tab restyle with folder filter pills
-- [ ] Step 14 — RAG no-match state and relevance threshold
+- [x] Step 14 — RAG no-match state and relevance threshold
 
 ## 0. Corrections to design/README.md
 
@@ -249,13 +249,13 @@ Everything above is MVP. Everything below is the RAG milestone — it depends on
 **Risk:** Was low, as flagged — confirmed by how little surface area this step actually touched now that steps 10–12 already did the real data-model work.
 **Commit message:** `Restyle RAG tab with folder filter pills and sources panel`
 
-### Step 14 — RAG no-match state and relevance threshold [RAG milestone]
+### Step 14 — RAG no-match state and relevance threshold [RAG milestone] — DONE
 **Goal:** Add a minimum relevance score to `rag_search`; below it, return no answer and instead show the closest (weak-match) passages.
-**Files:** `src-tauri/src/rag.rs` (threshold logic), `src/lib/rag.ts`, `src/components/ChatView.tsx`, new `src/components/RagNoMatch.tsx`.
-**Approach:** See decision D6. Threshold is a configurable Settings value (default needs tuning — start conservative, expect this number to move after real-world testing with the actual embedding model in use, since cosine-similarity score distributions vary by embedding model).
-**Acceptance criteria:** A question clearly unrelated to indexed content shows the no-match screen with weak-match passages, not a fabricated answer. A clearly-related question still answers normally.
-**Verify:** Ask an on-topic and an off-topic question against the same index, confirm the two different UI states trigger correctly. Test the threshold isn't so aggressive that legitimate close questions get rejected.
-**Risk:** Medium — threshold tuning is inherently fuzzy; ship it adjustable in Settings so it isn't a hardcoded guess.
+**Files:** `src-tauri/src/rag.rs` (`rag_search` now returns `RagSearchResult { used, closest }` instead of a flat list — `used` holds passages at or above the threshold, capped at `top_k`; `closest` is only populated when `used` is empty, the best-scoring passages anyway for transparency), `src-tauri/src/settings.rs` (`AppSettings` gains `relevance_threshold`, default `0.3`), `src/lib/rag.ts`, `src/lib/settings.ts`, `src/components/ChatView.tsx` (RAG mode now skips calling the model entirely when nothing clears the threshold — the app decides no-match from retrieval scores, not by asking the model to self-report, per D6), `src/components/KnowledgeSettingsPanel.tsx` (adds the threshold slider alongside chunk size/overlap/passages from step 12), `src/components/SourcesPanel.tsx` (rewritten to switch between "Passages used" and "Closest passages — weak match" display depending on which half of `RagSearchResult` is populated), new `src/components/RagNoMatch.tsx`, `src/App.tsx` (threads a real `onOpenKnowledgeBase` navigation callback into `ChatView`, mirroring the existing `onChangeModel` pattern, so the no-match screen's "Open Knowledge base" button actually navigates there).
+**Approach:** Default threshold `0.3` chosen as the conservative starting point per your explicit choice — lets more borderline-relevant passages through rather than over-rejecting, easy to raise later once tested against the real embedding model in use. The no-match state is deliberately not persisted as a chat message (no backend/session-schema change needed): it's transient UI state (`ragNoMatchIndexName`) cleared on rephrase, new chat, or switching to General via "Answer without documents" — a no-match turn has no model-generated content to meaningfully persist anyway.
+**Verified:** `cargo check`/`cargo build` clean, no warnings. `npx tsc --noEmit` clean, `npm run build` succeeds. Traced `rag_search`'s sort-then-filter-then-truncate order by hand to confirm `closest` is always the genuinely best-scoring passages (sorted before either the `used` filter or the `closest` truncate runs), not an arbitrary subset.
+**Remaining manual verification (for you):** restart `npm run tauri dev` (Rust binary changed). In RAG mode against an indexed folder, ask a clearly on-topic question — confirm it answers normally with Sources panel showing "Passages used". Ask something clearly unrelated to the indexed content — confirm the no-match card appears instead of a guessed answer, with the Sources panel switching to "Closest passages" showing weak-match passages with dashed borders. Try all three no-match actions: "Rephrase question" (dismisses the card, focuses the input), "Open Knowledge base" (navigates to the Knowledge base page), "Answer without documents" (switches to General mode). In Knowledge base settings, adjust the relevance threshold and confirm it changes whether borderline questions trigger the no-match state.
+**Risk:** Was medium, as flagged — threshold tuning is inherently fuzzy and this ships adjustable rather than hardcoded, exactly as planned. Confirmed no deadlock/locking regression, since this step didn't touch any locking logic from steps 11a/11b.
 **Commit message:** `Add RAG relevance threshold and no-match state`
 
 ## 3. Decisions needed, with recommendations

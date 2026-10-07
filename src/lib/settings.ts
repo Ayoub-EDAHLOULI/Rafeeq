@@ -11,6 +11,7 @@ export interface AppSettings {
   chunk_size: number;
   chunk_overlap: number;
   passages_per_question: number;
+  relevance_threshold: number;
 }
 
 export function getSettings(): Promise<AppSettings> {

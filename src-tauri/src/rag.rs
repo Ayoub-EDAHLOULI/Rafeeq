@@ -22,6 +22,13 @@ use crate::settings::get_settings;
 pub const DEFAULT_CHUNK_TOKENS: usize = 300;
 pub const DEFAULT_CHUNK_OVERLAP_TOKENS: usize = 50;
 pub const DEFAULT_PASSAGES_PER_QUESTION: usize = 5;
+/// Minimum cosine similarity (normalized vectors, so in [-1, 1]) for a
+/// passage to be considered a real match rather than a "closest but
+/// probably irrelevant" one shown in the no-match state. Cosine-similarity
+/// distributions vary a lot by embedding model, so this is a starting
+/// point meant to be tuned in Settings against real data, not a
+/// universally-correct number.
+pub const DEFAULT_RELEVANCE_THRESHOLD: f32 = 0.3;
 const EMBED_CONTEXT_SIZE: u32 = 512;
 
 self_cell!(
@@ -640,6 +647,17 @@ pub struct RagResult {
     score: f32,
 }
 
+/// `used` holds passages at or above the relevance threshold — the normal
+/// case, meant to be sent to the model as context. `closest` is only
+/// populated when `used` is empty: the best-scoring passages anyway, shown
+/// in the no-match UI so the user can see what was close without the app
+/// (or the model) presenting them as a real answer.
+#[derive(Serialize)]
+pub struct RagSearchResult {
+    used: Vec<RagResult>,
+    closest: Vec<RagResult>,
+}
+
 #[tauri::command]
 pub fn rag_search(
     app: AppHandle,
@@ -647,10 +665,13 @@ pub fn rag_search(
     index_id: String,
     query: String,
     top_k: usize,
-) -> Result<Vec<RagResult>, String> {
+) -> Result<RagSearchResult, String> {
     let path = index_path(&app, &index_id)?;
     let raw = fs::read_to_string(&path).map_err(|e| format!("Index not found: {e}"))?;
     let index: RagIndex = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+
+    let settings = get_settings(app.clone())?;
+    let threshold = settings.relevance_threshold();
 
     let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
     let loaded = loaded.as_mut().ok_or("No embedding model loaded")?;
@@ -673,9 +694,30 @@ pub fn rag_search(
         .collect();
 
     scored.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
-    scored.truncate(top_k);
 
-    Ok(scored)
+    let used: Vec<RagResult> = scored
+        .iter()
+        .filter(|r| r.score >= threshold)
+        .take(top_k)
+        .map(|r| RagResult {
+            source_file: r.source_file.clone(),
+            text: r.text.clone(),
+            score: r.score,
+        })
+        .collect();
+
+    if !used.is_empty() {
+        return Ok(RagSearchResult {
+            used,
+            closest: Vec::new(),
+        });
+    }
+
+    scored.truncate(top_k);
+    Ok(RagSearchResult {
+        used: Vec::new(),
+        closest: scored,
+    })
 }
 
 fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {

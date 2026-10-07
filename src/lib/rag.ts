@@ -83,10 +83,18 @@ export interface RagResult {
   score: number;
 }
 
+// `used` holds passages at or above the relevance threshold — the normal
+// case. `closest` is only populated when `used` is empty: the best-scoring
+// passages anyway, for the no-match UI's "closest passages" panel.
+export interface RagSearchResult {
+  used: RagResult[];
+  closest: RagResult[];
+}
+
 export function ragSearch(
   indexId: string,
   query: string,
   topK: number,
-): Promise<RagResult[]> {
-  return invoke<RagResult[]>("rag_search", { indexId, query, topK });
+): Promise<RagSearchResult> {
+  return invoke<RagSearchResult>("rag_search", { indexId, query, topK });
 }

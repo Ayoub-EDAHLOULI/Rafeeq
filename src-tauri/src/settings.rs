@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
 use crate::llm::{DEFAULT_MAX_RESPONSE_TOKENS, DEFAULT_TEMPERATURE};
-use crate::rag::{DEFAULT_CHUNK_OVERLAP_TOKENS, DEFAULT_CHUNK_TOKENS, DEFAULT_PASSAGES_PER_QUESTION};
+use crate::rag::{
+    DEFAULT_CHUNK_OVERLAP_TOKENS, DEFAULT_CHUNK_TOKENS, DEFAULT_PASSAGES_PER_QUESTION,
+    DEFAULT_RELEVANCE_THRESHOLD,
+};
 use crate::sessions::resolve_sessions_dir;
 
 fn default_theme() -> String {
@@ -40,6 +43,10 @@ fn default_passages_per_question() -> usize {
     DEFAULT_PASSAGES_PER_QUESTION
 }
 
+fn default_relevance_threshold() -> f32 {
+    DEFAULT_RELEVANCE_THRESHOLD
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AppSettings {
     #[serde(default = "default_theme")]
@@ -58,6 +65,8 @@ pub struct AppSettings {
     chunk_overlap: usize,
     #[serde(default = "default_passages_per_question")]
     passages_per_question: usize,
+    #[serde(default = "default_relevance_threshold")]
+    relevance_threshold: f32,
 }
 
 impl AppSettings {
@@ -67,6 +76,10 @@ impl AppSettings {
 
     pub fn chunk_overlap(&self) -> usize {
         self.chunk_overlap
+    }
+
+    pub fn relevance_threshold(&self) -> f32 {
+        self.relevance_threshold
     }
 }
 
@@ -81,6 +94,7 @@ impl Default for AppSettings {
             chunk_size: default_chunk_size(),
             chunk_overlap: default_chunk_overlap(),
             passages_per_question: default_passages_per_question(),
+            relevance_threshold: default_relevance_threshold(),
         }
     }
 }

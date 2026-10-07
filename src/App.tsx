@@ -49,6 +49,7 @@ function App() {
             <ChatView
               modelName={activeModel}
               onChangeModel={() => setSection("models")}
+              onOpenKnowledgeBase={() => setSection("knowledge")}
             />
           )}
         </main>

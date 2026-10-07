@@ -166,6 +166,34 @@ export default function KnowledgeSettingsPanel() {
         />
       </div>
 
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <label htmlFor="knowledge-threshold" className="text-sm font-medium text-text">
+            Relevance threshold
+          </label>
+          <span className="font-mono text-sm text-subText">
+            {(settings?.relevance_threshold ?? 0.3).toFixed(2)}
+          </span>
+        </div>
+        <input
+          id="knowledge-threshold"
+          type="range"
+          min={0}
+          max={0.8}
+          step={0.05}
+          value={settings?.relevance_threshold ?? 0.3}
+          onChange={(e) =>
+            updateSettings({ relevance_threshold: Number(e.target.value) })
+          }
+          className="w-full accent-primary"
+        />
+        <span className="text-xs leading-relaxed text-subText">
+          Below this, a question is treated as not found in your documents
+          rather than answered. Raise it if answers feel loosely related;
+          lower it if relevant questions get rejected.
+        </span>
+      </div>
+
       <div className="h-px bg-border" />
 
       <div className="rounded-lg border border-border bg-background px-3.5 py-3 text-sm leading-relaxed text-subText">

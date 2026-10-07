@@ -16,7 +16,12 @@ import {
   saveSession,
   type SessionSummary,
 } from "../lib/sessions";
-import { ragSearch, type RagResult } from "../lib/rag";
+import {
+  listRagIndexes,
+  ragSearch,
+  type RagIndexSummary,
+  type RagSearchResult,
+} from "../lib/rag";
 import { getSettings } from "../lib/settings";
 import MessageContent from "./MessageContent";
 import SessionSidebar from "./SessionSidebar";
@@ -24,6 +29,7 @@ import SessionPanel from "./SessionPanel";
 import DocumentPanel from "./DocumentPanel";
 import RagPanel from "./RagPanel";
 import SourcesPanel from "./SourcesPanel";
+import RagNoMatch from "./RagNoMatch";
 
 type ChatMode = "general" | "code" | "document" | "rag";
 
@@ -52,20 +58,13 @@ function documentSystemPrompt(doc: LoadedDocument): string {
   );
 }
 
-function ragSystemPrompt(results: RagResult[]): string {
-  if (results.length === 0) {
-    return (
-      "No relevant passages were found in the indexed folder for this " +
-      "question. Say so rather than guessing."
-    );
-  }
-  const passages = results
+function ragSystemPrompt(results: RagSearchResult): string {
+  const passages = results.used
     .map((r) => `[${r.source_file}]\n${r.text}`)
     .join("\n\n---\n\n");
   return (
     "Answer the question using only the passages below, retrieved from a " +
-    "local document index. Cite the source file when relevant, and say " +
-    "so if the passages don't contain the answer. " +
+    "local document index. Cite the source file when relevant. " +
     NO_FABRICATION_RULE +
     "\n\n" +
     passages
@@ -75,6 +74,7 @@ function ragSystemPrompt(results: RagResult[]): string {
 interface ChatViewProps {
   modelName: string;
   onChangeModel: () => void;
+  onOpenKnowledgeBase: () => void;
 }
 
 interface ChatTokenEvent {
@@ -91,7 +91,11 @@ interface ChatErrorEvent {
   message: string;
 }
 
-export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
+export default function ChatView({
+  modelName,
+  onChangeModel,
+  onOpenKnowledgeBase,
+}: ChatViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -106,7 +110,11 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     null,
   );
   const [ragIndexId, setRagIndexId] = useState<string | null>(null);
-  const [ragResults, setRagResults] = useState<RagResult[] | null>(null);
+  const [ragResults, setRagResults] = useState<RagSearchResult | null>(null);
+  const [ragNoMatchIndexName, setRagNoMatchIndexName] = useState<
+    string | null
+  >(null);
+  const [ragIndexes, setRagIndexes] = useState<RagIndexSummary[]>([]);
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
   const [temperature, setTemperature] = useState(0.8);
   const [maxResponseTokens, setMaxResponseTokens] = useState<
@@ -115,6 +123,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
   const [passagesPerQuestion, setPassagesPerQuestion] = useState(5);
   const [contextSize, setContextSize] = useState<number | null>(null);
   const activeRequestId = useRef<string | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     getContextSize()
@@ -128,6 +137,13 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (mode !== "rag") return;
+    listRagIndexes()
+      .then(setRagIndexes)
+      .catch(() => {});
+  }, [mode]);
 
   const sessionStateRef = useRef({
     messages,
@@ -210,7 +226,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     if (!prompt || isGenerating) return;
 
     setError(null);
-    setInput("");
+    setRagNoMatchIndexName(null);
 
     let turnSystemPrompt: string | null =
       mode === "general"
@@ -222,16 +238,34 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
             : null;
 
     if (mode === "rag" && ragIndexId) {
+      let results;
       try {
-        const results = await ragSearch(ragIndexId, prompt, passagesPerQuestion);
-        setRagResults(results);
-        turnSystemPrompt = ragSystemPrompt(results);
+        results = await ragSearch(ragIndexId, prompt, passagesPerQuestion);
       } catch (err) {
         setError(String(err));
         return;
       }
+      setRagResults(results);
+
+      if (results.used.length === 0) {
+        // No answer worth generating — the app, not the model, decides
+        // this from retrieval scores. Show the user's question plus the
+        // no-match state instead of calling the model with nothing solid
+        // to ground an answer in.
+        setMessages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), role: "user", content: prompt },
+        ]);
+        const activeIndex = ragIndexes.find((i) => i.id === ragIndexId);
+        setRagNoMatchIndexName(activeIndex?.name ?? "your documents");
+        setInput("");
+        return;
+      }
+
+      turnSystemPrompt = ragSystemPrompt(results);
     }
 
+    setInput("");
     const requestId = crypto.randomUUID();
     activeRequestId.current = requestId;
 
@@ -265,6 +299,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     setSessionCreatedAt(null);
     setLoadedDoc(null);
     setRagResults(null);
+    setRagNoMatchIndexName(null);
     setError(null);
   }
 
@@ -445,7 +480,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
         )}
 
         <div className="flex-1 overflow-y-auto pr-3">
-          {messages.length === 0 ? (
+          {messages.length === 0 && !ragNoMatchIndexName ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-sm text-subText">
                 Ask something to start the conversation.
@@ -477,6 +512,20 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
                   </div>
                 </div>
               ))}
+              {ragNoMatchIndexName && (
+                <RagNoMatch
+                  indexName={ragNoMatchIndexName}
+                  onRephrase={() => {
+                    setRagNoMatchIndexName(null);
+                    inputRef.current?.focus();
+                  }}
+                  onOpenKnowledgeBase={onOpenKnowledgeBase}
+                  onAnswerWithoutDocuments={() => {
+                    setRagNoMatchIndexName(null);
+                    setMode("general");
+                  }}
+                />
+              )}
             </div>
           )}
         </div>
@@ -489,6 +538,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
 
         <div className="flex items-end gap-2 border-t border-border pt-4">
           <textarea
+            ref={inputRef}
             dir="auto"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -536,7 +586,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
 
       {mode === "document" && <DocumentPanel doc={loadedDoc} />}
 
-      {mode === "rag" && <SourcesPanel results={ragResults} />}
+      {mode === "rag" && <SourcesPanel result={ragResults} />}
     </div>
   );
 }
