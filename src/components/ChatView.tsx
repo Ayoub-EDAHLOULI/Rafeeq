@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { ChatMessage } from "../types/message";
-import { sendMessage, stopGeneration, type ChatTurn } from "../lib/scanModels";
+import {
+  getContextSize,
+  sendMessage,
+  stopGeneration,
+  unloadModel,
+  type ChatTurn,
+} from "../lib/scanModels";
 import { pickDocument, type LoadedDocument } from "../lib/documents";
 import {
   deleteSession,
@@ -13,9 +19,13 @@ import {
 import { ragSearch, type RagResult } from "../lib/rag";
 import MessageContent from "./MessageContent";
 import SessionSidebar from "./SessionSidebar";
+import SessionPanel from "./SessionPanel";
 import RagPanel from "./RagPanel";
 
 type ChatMode = "general" | "code" | "document" | "rag";
+
+const DEFAULT_SYSTEM_PROMPT =
+  "You are Rafeeq, a concise and helpful assistant that runs fully offline.";
 
 const CODE_HELP_SYSTEM_PROMPT =
   "You are a code assistant. Explain code, answer programming questions, " +
@@ -94,7 +104,16 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
   );
   const [ragIndexId, setRagIndexId] = useState<string | null>(null);
   const [ragResults, setRagResults] = useState<RagResult[] | null>(null);
+  const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
+  const [temperature, setTemperature] = useState(0.8);
+  const [contextSize, setContextSize] = useState<number | null>(null);
   const activeRequestId = useRef<string | null>(null);
+
+  useEffect(() => {
+    getContextSize()
+      .then(setContextSize)
+      .catch(() => {});
+  }, []);
 
   const sessionStateRef = useRef({
     messages,
@@ -179,18 +198,20 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     setError(null);
     setInput("");
 
-    let systemPrompt: string | null =
-      mode === "code"
-        ? CODE_HELP_SYSTEM_PROMPT
-        : mode === "document" && loadedDoc
-          ? documentSystemPrompt(loadedDoc)
-          : null;
+    let turnSystemPrompt: string | null =
+      mode === "general"
+        ? systemPrompt
+        : mode === "code"
+          ? CODE_HELP_SYSTEM_PROMPT
+          : mode === "document" && loadedDoc
+            ? documentSystemPrompt(loadedDoc)
+            : null;
 
     if (mode === "rag" && ragIndexId) {
       try {
         const results = await ragSearch(ragIndexId, prompt, 5);
         setRagResults(results);
-        systemPrompt = ragSystemPrompt(results);
+        turnSystemPrompt = ragSystemPrompt(results);
       } catch (err) {
         setError(String(err));
         return;
@@ -201,8 +222,8 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     activeRequestId.current = requestId;
 
     const history: ChatTurn[] = [
-      ...(systemPrompt
-        ? [{ role: "system" as const, content: systemPrompt }]
+      ...(turnSystemPrompt
+        ? [{ role: "system" as const, content: turnSystemPrompt }]
         : []),
       ...messages.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: prompt },
@@ -216,7 +237,7 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
     setIsGenerating(true);
 
     try {
-      await sendMessage(requestId, history);
+      await sendMessage(requestId, history, temperature);
     } catch (err) {
       activeRequestId.current = null;
       setIsGenerating(false);
@@ -277,6 +298,15 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
   async function handleStop() {
     try {
       await stopGeneration();
+    } catch (err) {
+      setError(String(err));
+    }
+  }
+
+  async function handleUnload() {
+    try {
+      await unloadModel();
+      onChangeModel();
     } catch (err) {
       setError(String(err));
     }
@@ -500,6 +530,18 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
           )}
         </div>
       </div>
+
+      {mode === "general" && (
+        <SessionPanel
+          systemPrompt={systemPrompt}
+          onSystemPromptChange={setSystemPrompt}
+          temperature={temperature}
+          onTemperatureChange={setTemperature}
+          contextSize={contextSize}
+          modelName={modelName}
+          onUnload={handleUnload}
+        />
+      )}
     </div>
   );
 }

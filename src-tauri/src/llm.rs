@@ -19,6 +19,7 @@ use crate::models::resolve_models_dir;
 
 pub const CONTEXT_SIZE: u32 = 4096;
 const MAX_RESPONSE_TOKENS: usize = 1024;
+const DEFAULT_TEMPERATURE: f32 = 0.8;
 
 self_cell!(
     struct ModelWithContext {
@@ -125,6 +126,14 @@ pub fn loaded_model(state: State<LlmState>) -> Result<Option<String>, String> {
     Ok(loaded.as_ref().map(|m| m.file_name.clone()))
 }
 
+/// Context length is fixed at load time (see `load_model`), not a live
+/// per-message setting — see design/BUILD_PLAN.md decision D8. Exposed so
+/// the session panel can show it read-only.
+#[tauri::command]
+pub fn context_size() -> u32 {
+    CONTEXT_SIZE
+}
+
 impl LlmState {
     /// Truncates `text` to at most `budget` tokens using the loaded model's
     /// tokenizer, returning the (possibly shortened) text and whether it was
@@ -175,10 +184,13 @@ pub fn send_message(
     state: State<LlmState>,
     request_id: String,
     history: Vec<ChatTurn>,
+    temperature: Option<f32>,
 ) -> Result<(), String> {
     if state.loaded.lock().map_err(|e| e.to_string())?.is_none() {
         return Err("No model loaded".to_string());
     }
+
+    let temperature = temperature.unwrap_or(DEFAULT_TEMPERATURE);
 
     state.stop_flag.store(false, Ordering::SeqCst);
     let stop_flag = state.stop_flag.clone();
@@ -190,7 +202,7 @@ pub fn send_message(
             let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
             let loaded = loaded.as_mut().ok_or("No model loaded")?;
             loaded.inner.with_dependent_mut(|model, ctx| {
-                generate(model, ctx, &history, &stop_flag, |token| {
+                generate(model, ctx, &history, temperature, &stop_flag, |token| {
                     let _ = app.emit(
                         "chat-token",
                         ChatTokenEvent {
@@ -235,6 +247,7 @@ fn generate(
     model: &LlamaModel,
     ctx: &mut LlamaContext,
     history: &[ChatTurn],
+    temperature: f32,
     stop_flag: &AtomicBool,
     mut on_token: impl FnMut(String),
 ) -> Result<(), String> {
@@ -286,7 +299,7 @@ fn generate(
     let mut sampler = LlamaSampler::chain_simple([
         LlamaSampler::penalties(model.n_vocab(), 256, 1.15, 0.0, 0.0),
         LlamaSampler::min_p(0.05, 1),
-        LlamaSampler::temp(0.8),
+        LlamaSampler::temp(temperature),
         LlamaSampler::dist(1234),
     ]);
     let mut decoder = UTF_8.new_decoder();

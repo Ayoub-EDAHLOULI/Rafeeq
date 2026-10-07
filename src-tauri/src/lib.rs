@@ -36,6 +36,7 @@ pub fn run() {
             llm::load_model,
             llm::unload_model,
             llm::loaded_model,
+            llm::context_size,
             llm::send_message,
             llm::stop_generation,
             offline_audit::offline_audit,

@@ -40,6 +40,10 @@ export function getLoadedModel(): Promise<string | null> {
   return invoke<string | null>("loaded_model");
 }
 
+export function getContextSize(): Promise<number> {
+  return invoke<number>("context_size");
+}
+
 export interface ChatTurn {
   role: "system" | "user" | "assistant";
   content: string;
@@ -48,8 +52,9 @@ export interface ChatTurn {
 export function sendMessage(
   requestId: string,
   history: ChatTurn[],
+  temperature: number,
 ): Promise<void> {
-  return invoke<void>("send_message", { requestId, history });
+  return invoke<void>("send_message", { requestId, history, temperature });
 }
 
 export function stopGeneration(): Promise<void> {

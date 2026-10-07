@@ -11,7 +11,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 4b — Model type detection and caching
 - [x] Step 5 — Models page and First run
 - [x] Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle
-- [ ] Step 7 — Session panel (system prompt, temperature, context length)
+- [x] Step 7 — Session panel (system prompt, temperature, context length)
 - [ ] Step 8 — Document panel: context meter (real tokenizer count) and extracted-text preview
 - [ ] Step 9 — Settings page (local JSON store, path TBD at implementation time)
 - [ ] Step 10 — Knowledge base: folder list and status model
@@ -173,13 +173,13 @@ Each step is scoped to be one commit and leaves `npm run tauri dev` working. "Ve
 **Risk:** Low.
 **Commit message:** `Restyle chat sidebar and chat mode tabs`
 
-### Step 7 — Session panel (system prompt, temperature, context length) [MVP]
-**Goal:** Add the right-hand session panel in General/Code modes, make temperature, context length, and CPU threads real per-request parameters instead of Rust constants.
-**Files:** `src-tauri/src/llm.rs` (accept parameters in `send_message`/`load_model`), `src/lib/scanModels.ts`, `src/components/ChatView.tsx`, new `src/components/SessionPanel.tsx`.
-**Approach:** Context length changes require reloading the model's context (`LlamaContextParams::with_n_ctx`), which today only happens in `load_model` — raising or lowering it mid-session means either (a) re-running `load_model` under the hood when the slider changes, or (b) fixing context length at load time and only exposing it as a pre-load setting, not a live slider. Recommend (b): treat context length as a Models-page/load-time choice, not a per-message slider — see decision D8. Temperature is cheap to change per-request (just a sampler parameter), so that part of the design ships as specified.
-**Acceptance criteria:** System prompt and temperature are editable and affect the next message sent; context length is shown read-only in this panel (sourced from the loaded model's actual context) unless D8 is resolved otherwise before this step starts.
-**Verify:** Change temperature to 0 and 2, send the same prompt twice, confirm visibly different determinism/variety.
-**Risk:** Medium — threading a new parameter through `send_message` touches the hottest code path (token generation). Test generation still streams correctly and `Stop` still works after this change.
+### Step 7 — Session panel (system prompt, temperature, context length) [MVP] — DONE
+**Goal:** Add the right-hand session panel in General mode, make temperature a real per-request parameter instead of a Rust constant, and show context length read-only per D8.
+**Files:** `src-tauri/src/llm.rs` (`send_message` now takes `temperature: Option<f32>`, threaded into `generate()`'s `LlamaSampler::temp`; new `context_size` command exposing the existing `CONTEXT_SIZE` constant), `src-tauri/src/lib.rs` (registers `context_size`), `src/lib/scanModels.ts` (`sendMessage` takes `temperature`, new `getContextSize`), `src/components/ChatView.tsx`, new `src/components/SessionPanel.tsx`.
+**Approach:** Per D8, context length is shown read-only (fetched once via the new `context_size` command, not a live slider) rather than reloading the model's context mid-session. Temperature is a genuine live per-request parameter — cheap to change since it's just a sampler argument, no model/context reload needed; confirmed `LlamaSampler::temp(0.0)` is safe (passes straight to llama.cpp's `llama_sampler_init_temp`, which treats `t <= 0` as standard greedy/argmax sampling, not a divide-by-zero). The panel is shown only in General mode — Code/Document/RAG modes already inject their own fixed or retrieval-driven system prompts, so a freely-editable "system prompt" box would be ambiguous there. System prompt defaults to the mockup's text ("You are Rafeeq, a concise and helpful assistant that runs fully offline."), editable, applied only when `mode === "general"`. The panel also repeats the loaded-model name and an Unload button (calling the existing `unload_model` command, then `onChangeModel()` to return to the model switcher), matching the mockup.
+**Verified:** `cargo check`/`cargo build` clean with no warnings. `npx tsc --noEmit` clean. `npm run build` succeeds.
+**Remaining manual verification (for you):** `npm run tauri dev`, switch to General mode and confirm the session panel appears with the system prompt, temperature slider, read-only context length, loaded-model name, and Unload button. Edit the system prompt and confirm it's used (e.g. ask the model to state its instructions). Set temperature to 0, send the same prompt twice, confirm near-identical output both times (greedy); set it to 2, send it twice more, confirm more variation. Confirm `Stop` still works mid-generation (this step touched the hot generation path). Click Unload and confirm it returns to the Models/model-switcher view.
+**Risk:** Was medium (threading a new parameter through the hottest code path) — mitigated by keeping the change additive (`Option<f32>` with a default) and confirmed via a clean full `cargo build`; still worth the manual streaming/Stop re-check above since this is exactly the kind of change that can silently break under real generation load even when it compiles.
 **Commit message:** `Add session panel with live temperature control`
 
 ### Step 8 — Document panel: context meter and extracted-text preview [MVP]
