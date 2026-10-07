@@ -1,7 +1,22 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use std::time::UNIX_EPOCH;
+use tauri::{AppHandle, Manager, State};
+
+use llama_cpp_2::model::params::LlamaModelParams;
+use llama_cpp_2::model::LlamaModel;
+
+use crate::llm::LlmState;
+
+#[derive(Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ModelType {
+    Chat,
+    Embedding,
+    Unknown,
+}
 
 #[derive(Serialize)]
 pub struct ModelInfo {
@@ -9,6 +24,88 @@ pub struct ModelInfo {
     file_name: String,
     size_bytes: u64,
     quant: Option<String>,
+    model_type: ModelType,
+}
+
+/// Cache key: a model file is only re-probed when its size or modified time
+/// changes, so replacing a file (e.g. re-downloading it) invalidates the
+/// cached type without needing an explicit "clear cache" action.
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+struct CacheKey {
+    size_bytes: u64,
+    modified_millis: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct CacheEntry {
+    key: CacheKey,
+    #[serde(rename = "type")]
+    model_type: CachedModelType,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum CachedModelType {
+    Chat,
+    Embedding,
+}
+
+impl From<CachedModelType> for ModelType {
+    fn from(cached: CachedModelType) -> Self {
+        match cached {
+            CachedModelType::Chat => ModelType::Chat,
+            CachedModelType::Embedding => ModelType::Embedding,
+        }
+    }
+}
+
+fn cache_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let base = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?;
+    fs::create_dir_all(&base).map_err(|e| e.to_string())?;
+    Ok(base.join("model_type_cache.json"))
+}
+
+fn load_cache(app: &AppHandle) -> HashMap<String, CacheEntry> {
+    let Ok(path) = cache_path(app) else {
+        return HashMap::new();
+    };
+    let Ok(raw) = fs::read_to_string(&path) else {
+        return HashMap::new();
+    };
+    serde_json::from_str(&raw).unwrap_or_default()
+}
+
+fn save_cache(app: &AppHandle, cache: &HashMap<String, CacheEntry>) {
+    let Ok(path) = cache_path(app) else { return };
+    let Ok(json) = serde_json::to_string(cache) else {
+        return;
+    };
+    let _ = fs::write(&path, json);
+}
+
+/// Probes whether a .gguf file is a chat model (has a chat template) or an
+/// embedding model (no chat template), the same check `load_model` and
+/// `load_embedding_model` already use as a load-time guard. Loads with
+/// `vocab_only`, so llama.cpp reads only the vocabulary and metadata
+/// (including the chat template, if any) without allocating the model's
+/// tensor weights — unlike a real chat/embedding load, this doesn't scale
+/// with model size, so probing a large model here is cheap regardless of
+/// how much RAM is already committed to an actively loaded model.
+fn probe_model_type(backend: &llama_cpp_2::llama_backend::LlamaBackend, path: &std::path::Path) -> ModelType {
+    let model_params = LlamaModelParams::default().with_vocab_only(true);
+    match LlamaModel::load_from_file(backend, path, &model_params) {
+        Ok(model) => {
+            if model.chat_template(None).is_ok() {
+                ModelType::Chat
+            } else {
+                ModelType::Embedding
+            }
+        }
+        Err(_) => ModelType::Unknown,
+    }
 }
 
 const QUANT_PATTERNS: &[&str] = &[
@@ -114,9 +211,12 @@ pub fn install_bundled_model_if_needed(app: &AppHandle) {
 }
 
 #[tauri::command]
-pub fn scan_models(app: AppHandle) -> Result<Vec<ModelInfo>, String> {
+pub fn scan_models(app: AppHandle, llm_state: State<LlmState>) -> Result<Vec<ModelInfo>, String> {
     let dir = resolve_models_dir(&app)?;
     let entries = fs::read_dir(&dir).map_err(|e| e.to_string())?;
+
+    let mut cache = load_cache(&app);
+    let mut cache_dirty = false;
 
     let mut models = Vec::new();
     for entry in entries {
@@ -139,12 +239,50 @@ pub fn scan_models(app: AppHandle) -> Result<Vec<ModelInfo>, String> {
         let quant = detect_quant(file_stem);
         let name = display_name(file_stem, &quant);
 
+        let key = CacheKey {
+            size_bytes: metadata.len(),
+            modified_millis: metadata
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_millis() as u64)
+                .unwrap_or(0),
+        };
+
+        let model_type = match cache.get(&file_name) {
+            Some(cached) if cached.key == key => cached.model_type.into(),
+            _ => {
+                let probed = probe_model_type(llm_state.backend(), &path);
+                if let ModelType::Chat | ModelType::Embedding = probed {
+                    let cached_type = if matches!(probed, ModelType::Chat) {
+                        CachedModelType::Chat
+                    } else {
+                        CachedModelType::Embedding
+                    };
+                    cache.insert(
+                        file_name.clone(),
+                        CacheEntry {
+                            key,
+                            model_type: cached_type,
+                        },
+                    );
+                    cache_dirty = true;
+                }
+                probed
+            }
+        };
+
         models.push(ModelInfo {
             name,
             file_name,
             size_bytes: metadata.len(),
             quant,
+            model_type,
         });
+    }
+
+    if cache_dirty {
+        save_cache(&app, &cache);
     }
 
     models.sort_by(|a, b| a.name.cmp(&b.name));

@@ -1,11 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ModelInfo } from "../types/model";
+import type { ModelInfo, ModelType } from "../types/model";
 
 interface RawModelInfo {
   name: string;
   file_name: string;
   size_bytes: number;
   quant: string | null;
+  model_type: ModelType;
 }
 
 export async function scanModels(): Promise<ModelInfo[]> {
@@ -15,6 +16,7 @@ export async function scanModels(): Promise<ModelInfo[]> {
     fileName: m.file_name,
     sizeBytes: m.size_bytes,
     quant: m.quant,
+    modelType: m.model_type,
   }));
 }
 

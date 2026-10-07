@@ -8,7 +8,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 2 — Bundle fonts locally (+ Arabic fallback stack, `dir="auto"`)
 - [x] Step 3 — App shell: rail, top bar, status bar
 - [x] Step 4a — RAM/CPU status command (system-wide, visibility-gated polling)
-- [ ] Step 4b — Model type detection and caching
+- [x] Step 4b — Model type detection and caching
 - [ ] Step 5 — Models page and First run
 - [ ] Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle
 - [ ] Step 7 — Session panel (system prompt, temperature, context length)
@@ -146,13 +146,13 @@ Each step is scoped to be one commit and leaves `npm run tauri dev` working. "Ve
 **Risk:** Low. `sysinfo` is a well-established, pure-Rust, no-network crate.
 **Commit message:** `Add live system RAM and CPU readings to the status bar`
 
-### Step 4b — Model type detection and caching [MVP]
+### Step 4b — Model type detection and caching [MVP] — DONE
 **Goal:** Add `type: "chat" | "embedding" | "unknown"` to `ModelInfo`, detected via the existing chat-template probe, cached so `scan_models` doesn't reload every model's weights on every call.
-**Files:** `src-tauri/src/models.rs`, `src/types/model.ts`.
-**Approach:** Probing every `.gguf` file's chat template on every `scan_models` call means loading every model fully just to list them — too slow and memory-heavy with multiple large models present. Cache the result keyed by file path + size + mtime in a small sidecar file (same pattern as `profiles.json`/`sessions/*.json`), invalidated when the file changes. Mark "unknown" until the first successful probe (lazy: probe on first scan after this ships, or probe in the background) rather than blocking first launch.
-**Acceptance criteria:** Models list shows a Chat/Embedding badge without a multi-second delay on scan.
-**Verify:** With 2+ models present (one chat, one embedding, matching the dev machine's existing `qwen2.5` + `nomic-embed-text` files), confirm badges are correct and `scan_models` stays fast on repeat calls.
-**Risk:** Medium — probing requires loading the full model once; on an 8 GB RAM target with a large model already loaded for chat, probing a second large file could spike memory. Mitigate by only probing models under some sane size ceiling automatically, or deferring probing until the user opens the Models page (not on every app launch).
+**Files:** `src-tauri/src/models.rs`, `src-tauri/src/llm.rs` (added a `backend()` accessor so `scan_models` can reuse the shared `Arc<LlamaBackend>` without a second `LlamaBackend::init()`), `src/types/model.ts`, `src/lib/scanModels.ts`.
+**Approach:** Probing uses `LlamaModelParams::with_vocab_only(true)` rather than a normal load — this turned out to fully solve the risk flagged below, not just mitigate it: `vocab_only` makes llama.cpp read only the vocabulary and GGUF metadata (chat templates are stored as metadata, not derived from tensor data, so `chat_template()` still works), without allocating any tensor weights. Probing cost no longer scales with model size at all, so there's no need for a size ceiling or deferred-probing workaround. Results are cached in a single `model_type_cache.json` map file (one file, not one-per-model like `profiles.json`, since this is a derived cache rather than user data) at the app's local data root, keyed by filename with a `{size_bytes, modified_millis}` cache key — a changed file (different size or mtime) is treated as uncached and re-probed automatically.
+**Verified:** `cargo check`/`cargo build` clean, `npx tsc --noEmit` clean. Confirmed end-to-end against the real dev-machine models: `model_type_cache.json` was generated correctly during a live `tauri dev` run, correctly classifying `qwen2.5-0.5b-instruct-q4_k_m.gguf` as `"chat"` and `nomic-embed-text-v1.5.Q4_K_M.gguf` as `"embedding"`, with cache keys matching the files' real on-disk size and mtime exactly (verified by comparing the cached `modified_millis` against each file's actual modify timestamp in milliseconds).
+**Acceptance criteria:** Met — the cache correctly reflects model type for both files present, and the `vocab_only` probe approach means `scan_models` stays fast regardless of how large a probed file is.
+**Risk:** Was medium (probing could spike memory with a large model already loaded) — resolved by `vocab_only`, which doesn't load tensor weights at all, so this risk no longer applies. Remaining risk is low: `vocab_only` is a well-established llama.cpp loading mode, already exposed by the `llama-cpp-2` bindings this project already depends on.
 **Commit message:** `Detect and cache model type (chat vs embedding)`
 
 ### Step 5 — Models page and First run [MVP]

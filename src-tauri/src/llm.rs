@@ -49,6 +49,10 @@ unsafe impl Send for LlmState {}
 unsafe impl Sync for LlmState {}
 
 impl LlmState {
+    pub fn backend(&self) -> &Arc<LlamaBackend> {
+        &self.backend
+    }
+
     pub fn new(backend: Arc<LlamaBackend>) -> Self {
         Self {
             backend,
