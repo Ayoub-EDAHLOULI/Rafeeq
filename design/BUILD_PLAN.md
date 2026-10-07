@@ -6,7 +6,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 
 - [x] Step 1 — Design tokens and Tailwind mapping
 - [x] Step 2 — Bundle fonts locally (+ Arabic fallback stack, `dir="auto"`)
-- [ ] Step 3 — App shell: rail, top bar, status bar
+- [x] Step 3 — App shell: rail, top bar, status bar
 - [ ] Step 4a — RAM/CPU status command (system-wide, visibility-gated polling)
 - [ ] Step 4b — Model type detection and caching
 - [ ] Step 5 — Models page and First run
@@ -127,13 +127,14 @@ Each step is scoped to be one commit and leaves `npm run tauri dev` working. "Ve
 **Risk:** Medium — font licensing and file size, both resolved cleanly (all three fonts OFL-licensed; the 3-weight-only latin/arabic-subset imports keep the added bundle size to ~310 KB across woff+woff2, well under the installer's existing footprint).
 **Commit message:** `Bundle Hanken Grotesk, JetBrains Mono, and an Arabic fallback locally`
 
-### Step 3 — App shell: rail, top bar, status bar [MVP]
+### Step 3 — App shell: rail, top bar, status bar [MVP] — DONE
 **Goal:** Introduce section-based navigation (Chat / Models / Settings, with Knowledge gated behind the RAG milestone flag) replacing the current binary `App.tsx` switch. Add the icon rail and a real status bar.
-**Files:** `src/App.tsx` (rewritten), new `src/components/Rail.tsx`, `src/components/StatusBar.tsx`, `src/components/TopBar.tsx` (absorbs/replaces `AppHeader.tsx`).
-**Approach:** No router library — four sections is small enough for a `useState<Section>` in `App.tsx`, consistent with "prefer none" on dependencies. Status bar ships with just the offline indicator in this step; RAM/CPU land in their own step (4b) since they need a new Rust command.
-**Acceptance criteria:** Can navigate Chat ↔ Models ↔ Settings (Settings page is a placeholder stub in this step) via the rail. Loaded-model pill in top bar shows "No model loaded" or the current model, opens nothing yet (wired in step 5).
-**Verify:** Click all three rail icons, confirm correct section renders, confirm offline pill and theme toggle still work, confirm no console errors in either model-loaded or no-model-loaded state.
-**Risk:** Medium — this is the biggest structural change. Mitigate by keeping `ModelManager` and `ChatView` internals untouched in this step; only their mounting point changes.
+**Files:** `src/App.tsx` (rewritten), new `src/components/Rail.tsx`, `src/components/StatusBar.tsx`, `src/components/TopBar.tsx`, new `src/components/SettingsPage.tsx` (placeholder stub), removed `src/components/AppHeader.tsx` (superseded by `TopBar.tsx`, nothing else referenced it).
+**Approach:** No router library — three sections (`"chat" | "models" | "settings"`) via a `useState<Section>` in `App.tsx`, consistent with "prefer none" on dependencies. Status bar ships with just the offline indicator this step (copied from the old `OfflineBadge` logic, styled as the design's status-bar row); RAM/CPU land in step 4a. The top-bar loaded-model pill shows the loaded filename (or "No model loaded" with a hollow dot) and navigates to Models on click — it doesn't yet show quant/size, since that detail only exists on `ModelInfo` records fetched by `ModelManager`, not the plain filename string `App.tsx` tracks; richer pill content is deferred to step 6, as the plan already specified. When no model is loaded, the Chat rail icon still shows `ModelManager` (not an empty chat view), since chatting needs a loaded model — this matches First-run intent rather than being a bug.
+**Acceptance criteria:** Can navigate Chat ↔ Models ↔ Settings via the rail. Settings page is a placeholder stub. Loaded-model pill in top bar shows "No model loaded" or the current model's filename, clicking it navigates to Models.
+**Verified:** `npx tsc --noEmit` clean, `npm run build` succeeds with no new warnings.
+**Remaining manual verification (for you):** `npm run tauri dev`, click all three rail icons and confirm correct section renders each time; confirm the offline badge and theme toggle still work in the top bar; confirm no console errors with a model loaded and with none loaded; click the model pill and confirm it switches to the Models section.
+**Risk:** Medium — this is the biggest structural change so far. Mitigated by keeping `ModelManager` and `ChatView` internals completely untouched; only their mounting point in `App.tsx` changed.
 **Commit message:** `Add section navigation shell with icon rail and status bar`
 
 ### Step 4a — RAM/CPU status command [MVP]
