@@ -287,15 +287,18 @@ fn collect_text_files(dir: &Path) -> Vec<PathBuf> {
 /// so a folder can exist and be removed/renamed without requiring an
 /// embedding model to be loaded yet.
 #[tauri::command]
-pub async fn add_folder(
-    app: AppHandle,
-    name: String,
-) -> Result<Option<RagIndexSummary>, String> {
+pub async fn add_folder(app: AppHandle) -> Result<Option<RagIndexSummary>, String> {
     let folder_path = app.dialog().file().blocking_pick_folder();
     let Some(folder_path) = folder_path else {
         return Ok(None);
     };
     let folder_path = folder_path.into_path().map_err(|e| e.to_string())?;
+
+    let name = folder_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("Untitled folder")
+        .to_string();
 
     let id = uuid_like();
     let index = RagIndex {
@@ -436,6 +439,16 @@ pub fn delete_rag_index(app: AppHandle, id: String) -> Result<(), String> {
         fs::remove_file(&path).map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn rename_rag_index(app: AppHandle, id: String, name: String) -> Result<(), String> {
+    let path = index_path(&app, &id)?;
+    let raw = fs::read_to_string(&path).map_err(|e| format!("Folder not found: {e}"))?;
+    let mut index: RagIndex = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    index.name = name;
+    let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())
 }
 
 #[derive(Serialize)]

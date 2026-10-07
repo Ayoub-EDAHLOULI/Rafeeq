@@ -4,6 +4,7 @@ import {
   deleteRagIndex,
   indexFolder,
   listRagIndexes,
+  renameRagIndex,
   type RagIndexSummary,
 } from "../lib/rag";
 
@@ -18,10 +19,26 @@ interface FolderCardProps {
   isBusy: boolean;
   onIndex: (id: string) => void;
   onRemove: (id: string) => void;
+  onRename: (id: string, name: string) => void;
 }
 
-function FolderCard({ folder, isBusy, onIndex, onRemove }: FolderCardProps) {
+function FolderCard({
+  folder,
+  isBusy,
+  onIndex,
+  onRemove,
+  onRename,
+}: FolderCardProps) {
   const isIndexed = folder.status === "indexed";
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [draftName, setDraftName] = useState(folder.name);
+
+  function commitRename() {
+    const trimmed = draftName.trim();
+    if (trimmed && trimmed !== folder.name) onRename(folder.id, trimmed);
+    else setDraftName(folder.name);
+    setIsEditingName(false);
+  }
 
   return (
     <div
@@ -46,9 +63,31 @@ function FolderCard({ folder, isBusy, onIndex, onRemove }: FolderCardProps) {
 
       <div className="min-w-[240px] flex-1">
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="text-base font-semibold text-text">
-            {folder.name}
-          </span>
+          {isEditingName ? (
+            <input
+              autoFocus
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRename();
+                if (e.key === "Escape") {
+                  setDraftName(folder.name);
+                  setIsEditingName(false);
+                }
+              }}
+              className="min-w-0 rounded-md border border-border bg-background px-2 py-0.5 text-base font-semibold text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEditingName(true)}
+              title="Rename"
+              className="text-base font-semibold text-text hover:text-accentFg"
+            >
+              {folder.name}
+            </button>
+          )}
           <span
             className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
               isIndexed
@@ -126,14 +165,22 @@ export default function KnowledgePage() {
     setError(null);
     setIsAdding(true);
     try {
-      const name = window.prompt("Name this folder");
-      if (!name?.trim()) return;
-      const added = await addFolder(name.trim());
+      const added = await addFolder();
       if (added) refresh();
     } catch (err) {
       setError(String(err));
     } finally {
       setIsAdding(false);
+    }
+  }
+
+  async function handleRename(id: string, name: string) {
+    setError(null);
+    try {
+      await renameRagIndex(id, name);
+      refresh();
+    } catch (err) {
+      setError(String(err));
     }
   }
 
@@ -215,6 +262,7 @@ export default function KnowledgePage() {
               isBusy={indexingId === folder.id}
               onIndex={handleIndex}
               onRemove={handleRemove}
+              onRename={handleRename}
             />
           ))}
         </div>

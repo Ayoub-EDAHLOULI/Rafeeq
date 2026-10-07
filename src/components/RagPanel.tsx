@@ -24,7 +24,6 @@ export default function RagPanel({
   const [embeddingModel, setEmbeddingModel] = useState<string | null>(null);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [indexes, setIndexes] = useState<RagIndexSummary[]>([]);
-  const [indexName, setIndexName] = useState("");
   const [isIndexing, setIsIndexing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [skippedFiles, setSkippedFiles] = useState<string[]>([]);
@@ -59,15 +58,13 @@ export default function RagPanel({
   }
 
   async function handleIndexFolder() {
-    if (!indexName.trim()) return;
     setError(null);
     setSkippedFiles([]);
     setIsIndexing(true);
     try {
-      const added = await addFolder(indexName.trim());
+      const added = await addFolder();
       if (added) {
         const summary = await indexFolder(added.id);
-        setIndexName("");
         setSkippedFiles(summary.skipped_files ?? []);
         refresh();
         onSelectIndex(summary.id);
@@ -183,22 +180,14 @@ export default function RagPanel({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              value={indexName}
-              onChange={(e) => setIndexName(e.target.value)}
-              placeholder="Index name"
-              className="min-w-0 flex-1 rounded-lg border border-border bg-inputBg px-3 py-1.5 text-sm text-text placeholder:text-subText focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <button
-              type="button"
-              onClick={handleIndexFolder}
-              disabled={!indexName.trim() || isIndexing}
-              className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isIndexing ? "Indexing…" : "Index folder…"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleIndexFolder}
+            disabled={isIndexing}
+            className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isIndexing ? "Indexing…" : "Index a folder…"}
+          </button>
         </>
       )}
     </div>

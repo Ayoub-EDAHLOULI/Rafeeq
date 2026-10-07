@@ -19,8 +19,8 @@ export interface RagIndexSummary {
   skipped_files?: string[];
 }
 
-export function addFolder(name: string): Promise<RagIndexSummary | null> {
-  return invoke<RagIndexSummary | null>("add_folder", { name });
+export function addFolder(): Promise<RagIndexSummary | null> {
+  return invoke<RagIndexSummary | null>("add_folder");
 }
 
 export function indexFolder(id: string): Promise<RagIndexSummary> {
@@ -33,6 +33,10 @@ export function listRagIndexes(): Promise<RagIndexSummary[]> {
 
 export function deleteRagIndex(id: string): Promise<void> {
   return invoke<void>("delete_rag_index", { id });
+}
+
+export function renameRagIndex(id: string, name: string): Promise<void> {
+  return invoke<void>("rename_rag_index", { id, name });
 }
 
 export interface RagResult {

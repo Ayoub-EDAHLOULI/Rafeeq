@@ -56,6 +56,7 @@ pub fn run() {
             rag::index_folder,
             rag::list_rag_indexes,
             rag::delete_rag_index,
+            rag::rename_rag_index,
             rag::rag_search,
             system_stats::system_stats,
             settings::get_settings,
