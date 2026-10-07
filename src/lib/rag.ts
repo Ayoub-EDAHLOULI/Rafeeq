@@ -23,8 +23,28 @@ export function addFolder(): Promise<RagIndexSummary | null> {
   return invoke<RagIndexSummary | null>("add_folder");
 }
 
-export function indexFolder(id: string): Promise<RagIndexSummary> {
-  return invoke<RagIndexSummary>("index_folder", { id });
+// Starts background indexing for a previously-added folder and returns
+// immediately. Progress and completion are reported via the
+// "rag-index-progress" / "rag-index-done" / "rag-index-error" events,
+// listened to directly with @tauri-apps/api/event's `listen` where needed.
+export function indexFolder(id: string): Promise<void> {
+  return invoke<void>("index_folder", { id });
+}
+
+export interface IndexProgressEvent {
+  id: string;
+  files_done: number;
+  files_total: number;
+}
+
+export interface IndexDoneEvent {
+  id: string;
+  chunk_count: number;
+}
+
+export interface IndexErrorEvent {
+  id: string;
+  message: string;
 }
 
 export function listRagIndexes(): Promise<RagIndexSummary[]> {

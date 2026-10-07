@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import {
   addFolder,
   deleteRagIndex,
   indexFolder,
   listRagIndexes,
   renameRagIndex,
+  type IndexDoneEvent,
+  type IndexErrorEvent,
+  type IndexProgressEvent,
   type RagIndexSummary,
 } from "../lib/rag";
 
@@ -16,7 +20,7 @@ const STATUS_LABEL: Record<RagIndexSummary["status"], string> = {
 
 interface FolderCardProps {
   folder: RagIndexSummary;
-  isBusy: boolean;
+  progress: IndexProgressEvent | null;
   onIndex: (id: string) => void;
   onRemove: (id: string) => void;
   onRename: (id: string, name: string) => void;
@@ -24,12 +28,13 @@ interface FolderCardProps {
 
 function FolderCard({
   folder,
-  isBusy,
+  progress,
   onIndex,
   onRemove,
   onRename,
 }: FolderCardProps) {
   const isIndexed = folder.status === "indexed";
+  const isIndexing = folder.status === "indexing";
   const [isEditingName, setIsEditingName] = useState(false);
   const [draftName, setDraftName] = useState(folder.name);
 
@@ -92,20 +97,37 @@ function FolderCard({
             className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
               isIndexed
                 ? "bg-primary/10 text-accentFg"
-                : "bg-panel2 text-subText"
+                : isIndexing
+                  ? "bg-panel2 text-accentFg"
+                  : "bg-panel2 text-subText"
             }`}
           >
             {isIndexed && <span className="h-1.5 w-1.5 rounded-full bg-dot" />}
-            {STATUS_LABEL[folder.status]}
+            {isIndexing ? "Indexing" : STATUS_LABEL[folder.status]}
           </span>
         </div>
         <div className="mt-1 truncate font-mono text-xs text-faint">
           {folder.folder_path}
         </div>
+        {isIndexing && progress && (
+          <div className="mt-3 flex items-center gap-2.5">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-panel2">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{
+                  width: `${Math.round((progress.files_done / Math.max(progress.files_total, 1)) * 100)}%`,
+                }}
+              />
+            </div>
+            <span className="shrink-0 font-mono text-xs text-subText">
+              {progress.files_done} of {progress.files_total} files
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center gap-3">
-        {isIndexed && (
+        {isIndexed && !isIndexing && (
           <span className="font-mono text-sm text-subText">
             {folder.chunk_count.toLocaleString()} chunks
           </span>
@@ -113,20 +135,20 @@ function FolderCard({
         <button
           type="button"
           onClick={() => onIndex(folder.id)}
-          disabled={isBusy}
+          disabled={isIndexing}
           className={`h-11 rounded-lg px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
             isIndexed
               ? "border border-border text-text hover:bg-inputBg"
               : "bg-primary text-white hover:opacity-90"
           }`}
         >
-          {isBusy ? "Indexing…" : isIndexed ? "Re-index" : "Index now"}
+          {isIndexing ? "Indexing…" : isIndexed ? "Re-index" : "Index now"}
         </button>
         <button
           type="button"
           onClick={() => onRemove(folder.id)}
           aria-label={`Remove ${folder.name} from the knowledge base`}
-          disabled={isBusy}
+          disabled={isIndexing}
           className="flex h-11 w-11 items-center justify-center rounded-lg border border-border text-subText transition-colors hover:bg-inputBg disabled:cursor-not-allowed disabled:opacity-50"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -142,7 +164,9 @@ export default function KnowledgePage() {
   const [folders, setFolders] = useState<RagIndexSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
-  const [indexingId, setIndexingId] = useState<string | null>(null);
+  const [progressById, setProgressById] = useState<
+    Record<string, IndexProgressEvent>
+  >({});
   const [error, setError] = useState<string | null>(null);
 
   function refresh() {
@@ -159,6 +183,44 @@ export default function KnowledgePage() {
 
   useEffect(() => {
     refresh();
+  }, []);
+
+  useEffect(() => {
+    const unlistenProgress = listen<IndexProgressEvent>(
+      "rag-index-progress",
+      (event) => {
+        setProgressById((prev) => ({
+          ...prev,
+          [event.payload.id]: event.payload,
+        }));
+      },
+    );
+
+    const unlistenDone = listen<IndexDoneEvent>("rag-index-done", (event) => {
+      setProgressById((prev) => {
+        const { [event.payload.id]: _removed, ...rest } = prev;
+        return rest;
+      });
+      refresh();
+    });
+
+    const unlistenError = listen<IndexErrorEvent>(
+      "rag-index-error",
+      (event) => {
+        setProgressById((prev) => {
+          const { [event.payload.id]: _removed, ...rest } = prev;
+          return rest;
+        });
+        setError(event.payload.message);
+        refresh();
+      },
+    );
+
+    return () => {
+      unlistenProgress.then((f) => f());
+      unlistenDone.then((f) => f());
+      unlistenError.then((f) => f());
+    };
   }, []);
 
   async function handleAddFolder() {
@@ -186,14 +248,11 @@ export default function KnowledgePage() {
 
   async function handleIndex(id: string) {
     setError(null);
-    setIndexingId(id);
     try {
       await indexFolder(id);
       refresh();
     } catch (err) {
       setError(String(err));
-    } finally {
-      setIndexingId(null);
     }
   }
 
@@ -259,7 +318,7 @@ export default function KnowledgePage() {
             <FolderCard
               key={folder.id}
               folder={folder}
-              isBusy={indexingId === folder.id}
+              progress={progressById[folder.id] ?? null}
               onIndex={handleIndex}
               onRemove={handleRemove}
               onRename={handleRename}

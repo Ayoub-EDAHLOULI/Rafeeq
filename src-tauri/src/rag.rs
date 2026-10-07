@@ -10,7 +10,7 @@ use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::{AddBos, LlamaModel};
 use self_cell::self_cell;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
 use crate::documents::extract_text;
@@ -325,56 +325,128 @@ pub async fn add_folder(app: AppHandle) -> Result<Option<RagIndexSummary>, Strin
     Ok(Some(summary))
 }
 
+#[derive(Clone, Serialize)]
+struct IndexProgressEvent<'a> {
+    id: &'a str,
+    files_done: usize,
+    files_total: usize,
+}
+
+#[derive(Clone, Serialize)]
+struct IndexDoneEvent<'a> {
+    id: &'a str,
+    chunk_count: usize,
+}
+
+#[derive(Clone, Serialize)]
+struct IndexErrorEvent<'a> {
+    id: &'a str,
+    message: String,
+}
+
 /// Embeds every supported file in a previously-added folder (see
-/// `add_folder`) and marks it indexed. Still a single blocking call for
-/// now — background progress and pause/cancel land in a later step.
+/// `add_folder`) and marks it indexed, running on a background thread so
+/// the command returns immediately; progress is reported via
+/// `rag-index-progress`/`rag-index-done`/`rag-index-error` events, the same
+/// pattern `llm::send_message` uses for chat generation.
+///
+/// The embedding model's mutex is acquired and released once per chunk
+/// (not held for the whole run), so a `rag_search` against a different,
+/// already-indexed folder is only ever blocked behind a single chunk's
+/// embedding time, not the entire indexing job.
 #[tauri::command]
-pub async fn index_folder(
-    app: AppHandle,
-    state: State<'_, RagState>,
-    id: String,
-) -> Result<RagIndexSummary, String> {
+pub fn index_folder(app: AppHandle, id: String) -> Result<(), String> {
     let path = index_path(&app, &id)?;
     let raw = fs::read_to_string(&path).map_err(|e| format!("Folder not found: {e}"))?;
     let mut index: RagIndex = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
 
+    index.status = Some(IndexStatus::Indexing);
+    let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())?;
+
+    std::thread::spawn(move || {
+        let result = run_indexing(&app, &path, &mut index, &id);
+        match result {
+            Ok(chunk_count) => {
+                let _ = app.emit("rag-index-done", IndexDoneEvent { id: &id, chunk_count });
+            }
+            Err(message) => {
+                // Revert to not-indexed on failure so the folder doesn't get
+                // stuck showing "Indexing" forever; any partial progress
+                // (chunks from files processed before the failure) is
+                // discarded rather than saved half-finished.
+                index.status = Some(IndexStatus::NotIndexed);
+                index.chunks.clear();
+                if let Ok(json) = serde_json::to_string(&index) {
+                    let _ = fs::write(&path, json);
+                }
+                let _ = app.emit("rag-index-error", IndexErrorEvent { id: &id, message });
+            }
+        }
+    });
+
+    Ok(())
+}
+
+fn run_indexing(
+    app: &AppHandle,
+    path: &Path,
+    index: &mut RagIndex,
+    id: &str,
+) -> Result<usize, String> {
     let files = collect_text_files(Path::new(&index.folder_path));
     if files.is_empty() {
         return Err("No .txt, .md, .docx, or .pdf files found in that folder".to_string());
     }
 
-    let mut loaded = state.loaded.lock().map_err(|e| e.to_string())?;
-    let loaded = loaded.as_mut().ok_or("No embedding model loaded")?;
-
+    let state = app.state::<RagState>();
     let mut chunks = Vec::new();
     let mut skipped = Vec::new();
-    loaded.inner.with_dependent_mut(|model, ctx| -> Result<(), String> {
-        for file in &files {
-            let source_file = file
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("document")
-                .to_string();
 
-            let raw = match extract_text(file) {
-                Ok(text) => text,
-                Err(e) => {
-                    skipped.push(format!("{source_file}: {e}"));
-                    continue;
-                }
-            };
+    for (done, file) in files.iter().enumerate() {
+        let source_file = file
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("document")
+            .to_string();
 
-            for chunk in chunk_text(model, &raw)? {
-                let vector = embed_text(model, ctx, &chunk)?;
-                chunks.push(IndexedChunk {
-                    source_file: source_file.clone(),
-                    text: chunk,
-                    vector,
-                });
+        let raw = match extract_text(file) {
+            Ok(text) => text,
+            Err(e) => {
+                skipped.push(format!("{source_file}: {e}"));
+                continue;
             }
+        };
+
+        // Locks per-file (not for the whole run), so a concurrent
+        // rag_search only ever waits behind at most one file's worth of
+        // embedding work. The guard is dropped at the end of this block,
+        // before the progress event is emitted.
+        {
+            let mut guard = state.loaded.lock().map_err(|e| e.to_string())?;
+            let loaded = guard.as_mut().ok_or("No embedding model loaded")?;
+            loaded.inner.with_dependent_mut(|model, ctx| -> Result<(), String> {
+                for chunk in chunk_text(model, &raw)? {
+                    let vector = embed_text(model, ctx, &chunk)?;
+                    chunks.push(IndexedChunk {
+                        source_file: source_file.clone(),
+                        text: chunk,
+                        vector,
+                    });
+                }
+                Ok(())
+            })?;
         }
-        Ok(())
-    })?;
+
+        let _ = app.emit(
+            "rag-index-progress",
+            IndexProgressEvent {
+                id,
+                files_done: done + 1,
+                files_total: files.len(),
+            },
+        );
+    }
 
     if chunks.is_empty() {
         return Err(if skipped.is_empty() {
@@ -387,22 +459,14 @@ pub async fn index_folder(
         });
     }
 
+    let chunk_count = chunks.len();
     index.chunks = chunks;
     index.status = Some(IndexStatus::Indexed);
 
-    let summary = RagIndexSummary {
-        id: index.id.clone(),
-        name: index.name.clone(),
-        folder_path: index.folder_path.clone(),
-        chunk_count: index.chunks.len(),
-        status: IndexStatus::Indexed,
-        skipped_files: skipped,
-    };
-
     let json = serde_json::to_string(&index).map_err(|e| e.to_string())?;
-    fs::write(&path, json).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())?;
 
-    Ok(summary)
+    Ok(chunk_count)
 }
 
 #[tauri::command]

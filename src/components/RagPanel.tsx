@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import type { ModelInfo } from "../types/model";
 import { scanModels } from "../lib/scanModels";
 import {
@@ -8,6 +9,8 @@ import {
   indexFolder,
   listRagIndexes,
   loadEmbeddingModel,
+  type IndexDoneEvent,
+  type IndexErrorEvent,
   type RagIndexSummary,
 } from "../lib/rag";
 
@@ -24,9 +27,8 @@ export default function RagPanel({
   const [embeddingModel, setEmbeddingModel] = useState<string | null>(null);
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [indexes, setIndexes] = useState<RagIndexSummary[]>([]);
-  const [isIndexing, setIsIndexing] = useState(false);
+  const [indexingId, setIndexingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [skippedFiles, setSkippedFiles] = useState<string[]>([]);
 
   function refresh() {
     scanModels()
@@ -44,6 +46,32 @@ export default function RagPanel({
     refresh();
   }, []);
 
+  useEffect(() => {
+    const unlistenDone = listen<IndexDoneEvent>("rag-index-done", (event) => {
+      if (event.payload.id === indexingId) {
+        setIndexingId(null);
+        onSelectIndex(event.payload.id);
+      }
+      refresh();
+    });
+
+    const unlistenError = listen<IndexErrorEvent>(
+      "rag-index-error",
+      (event) => {
+        if (event.payload.id === indexingId) {
+          setIndexingId(null);
+          setError(event.payload.message);
+        }
+        refresh();
+      },
+    );
+
+    return () => {
+      unlistenDone.then((f) => f());
+      unlistenError.then((f) => f());
+    };
+  }, [indexingId]);
+
   async function handleLoadEmbeddingModel(fileName: string) {
     setError(null);
     setIsLoadingModel(true);
@@ -59,20 +87,16 @@ export default function RagPanel({
 
   async function handleIndexFolder() {
     setError(null);
-    setSkippedFiles([]);
-    setIsIndexing(true);
     try {
       const added = await addFolder();
       if (added) {
-        const summary = await indexFolder(added.id);
-        setSkippedFiles(summary.skipped_files ?? []);
+        setIndexingId(added.id);
         refresh();
-        onSelectIndex(summary.id);
+        await indexFolder(added.id);
       }
     } catch (err) {
       setError(String(err));
-    } finally {
-      setIsIndexing(false);
+      setIndexingId(null);
     }
   }
 
@@ -89,21 +113,6 @@ export default function RagPanel({
   return (
     <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3">
       {error && <p className="text-xs text-danger">{error}</p>}
-
-      {skippedFiles.length > 0 && (
-        <div className="text-xs text-subText">
-          <p>
-            {skippedFiles.length} file
-            {skippedFiles.length === 1 ? "" : "s"} skipped (no extractable
-            text):
-          </p>
-          <ul className="ml-4 list-disc">
-            {skippedFiles.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div>
         <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-subText">
@@ -163,7 +172,13 @@ export default function RagPanel({
                     >
                       {index.name}{" "}
                       <span className="text-xs text-subText">
-                        ({index.chunk_count} chunks)
+                        (
+                        {index.status === "indexing"
+                          ? "indexing…"
+                          : index.status === "not_indexed"
+                            ? "not indexed"
+                            : `${index.chunk_count} chunks`}
+                        )
                       </span>
                     </button>
                     <button
@@ -183,10 +198,10 @@ export default function RagPanel({
           <button
             type="button"
             onClick={handleIndexFolder}
-            disabled={isIndexing}
+            disabled={indexingId !== null}
             className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isIndexing ? "Indexing…" : "Index a folder…"}
+            {indexingId !== null ? "Indexing…" : "Index a folder…"}
           </button>
         </>
       )}
