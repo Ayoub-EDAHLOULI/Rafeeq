@@ -21,7 +21,7 @@ export default function OfflineBadge() {
       }
       className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
         isOffline
-          ? "bg-primary/10 text-primary"
+          ? "bg-primary/10 text-accentFg"
           : "bg-danger/10 text-danger"
       }`}
     >

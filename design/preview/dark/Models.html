@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rafeeq — Models</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.rq{--bg:#0a0c10;--panel:#11141a;--panel2:#181c24;--line:#252b36;--text:#e9ecf1;--muted:#9ba4b3;--faint:#8791a1;--accent:#2f6fed;--accentFg:#8ab4ff;--onAccent:#ffffff;--dot:#4ade80}
+.rq[data-theme="light"]{--bg:#f5f6f8;--panel:#ffffff;--panel2:#eceef2;--line:#dcdfe6;--text:#12151b;--muted:#4d5666;--faint:#5b6575;--accent:#2257d6;--accentFg:#1d4fc4;--onAccent:#ffffff;--dot:#15803d}
+.rq button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+.rq textarea,.rq input,.rq select{font:inherit;color:inherit}
+.rq button:focus-visible,.rq input:focus-visible,.rq textarea:focus-visible{outline:2px solid var(--accentFg);outline-offset:2px}
+</style>
+
+<div class="rq" data-theme="dark" style="width: 100%; height: 800px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 14px">
+
+<header style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; min-height: 60px; padding: 0 20px; box-sizing: border-box; background: var(--panel); border-bottom: 1px solid var(--line)">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 32px; height: 32px; border-radius: 9px; background: var(--accent); display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>
+</div>
+<span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">Rafeeq</span>
+</div>
+<button aria-label="Change loaded model" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2)">
+<span style="width: 8px; height: 8px; border-radius: 50%; background: var(--dot)"></span>
+<span style="font-weight: 500">qwen2.5 0.5b instruct</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">Q4_K_M · 469 MB</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--accentFg)"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent)"></span>Offline</span>
+<button aria-label="Switch light or dark theme" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"></path></svg>
+</button>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 0; min-height: 0; overflow: hidden">
+
+<nav aria-label="Sections" style="flex: 0 0 auto; width: 64px; box-sizing: border-box; padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel); border-right: 1px solid var(--line)">
+<button aria-label="Chat" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>
+</button>
+<button aria-label="Models" aria-current="page" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--panel2); color: var(--accentFg)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>
+</button>
+<button aria-label="Settings" style="margin-top: auto; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg>
+</button>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; min-height: 0; overflow: hidden; box-sizing: border-box; padding: 28px 36px; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px">
+<div>
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em">Models</h1>
+<p style="margin: 6px 0 0; color: var(--muted)">2 models · 549 MB on disk. Everything runs on this device.</p>
+</div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap">
+<button style="display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); font-weight: 500">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path></svg>
+Open models folder
+</button>
+<button style="height: 44px; padding: 0 18px; border-radius: 10px; background: var(--accent); color: var(--onAccent); font-weight: 600">Refresh</button>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint)">Profile</span>
+<button style="height: 40px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--accent); background: var(--panel2); font-weight: 500; color: var(--accentFg)">ayoub-edahlouli</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+
+<div style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 18px 20px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line)">
+<div style="width: 44px; height: 44px; border-radius: 12px; background: var(--panel2); display: flex; align-items: center; justify-content: center; color: var(--accentFg); flex: none">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"></path><path d="M3 13l9 5 9-5"></path></svg>
+</div>
+<div style="flex: 1 1 260px; min-width: 0">
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="font-size: 16px; font-weight: 600">nomic embed text v1.5</span><span style="padding: 2px 10px; border-radius: 999px; background: var(--panel2); font-size: 12px; font-weight: 500; color: var(--muted)">Embedding</span></div>
+<div style="margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--faint)">nomic-embed-text-v1.5.Q4_K_M.gguf</div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+<span style="padding: 4px 12px; border-radius: 999px; background: var(--panel2); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">Q4_K_M</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">80 MB</span>
+<button aria-label="Pin nomic embed text v1.5 as favorite" style="width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8 6.8 19.6l1-5.8L3.5 9.7l5.9-.9L12 3.5z"></path></svg>
+</button>
+<button style="height: 44px; padding: 0 22px; border-radius: 10px; background: var(--accent); color: var(--onAccent); font-weight: 600">Load</button>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding: 18px 20px; border-radius: 14px; background: var(--panel); border: 1px solid var(--accent)">
+<div style="width: 44px; height: 44px; border-radius: 12px; background: var(--accent); display: flex; align-items: center; justify-content: center; color: var(--onAccent); flex: none">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>
+</div>
+<div style="flex: 1 1 260px; min-width: 0">
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="font-size: 16px; font-weight: 600">qwen2.5 0.5b instruct</span><span style="padding: 2px 10px; border-radius: 999px; background: var(--panel2); font-size: 12px; font-weight: 500; color: var(--muted)">Chat</span><span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: var(--panel2); font-size: 12px; font-weight: 600; color: var(--accentFg)"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--dot)"></span>Loaded</span></div>
+<div style="margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--faint)">qwen2.5-0.5b-instruct-q4_k_m.gguf</div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+<span style="padding: 4px 12px; border-radius: 999px; background: var(--panel2); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">Q4_K_M</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">469 MB</span>
+<button aria-label="Pin qwen2.5 0.5b instruct as favorite" style="width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.8 6.8 19.6l1-5.8L3.5 9.7l5.9-.9L12 3.5z"></path></svg>
+</button>
+<button style="height: 44px; padding: 0 22px; border-radius: 10px; border: 1px solid var(--line); font-weight: 600">Unload</button>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 18px 20px; border-radius: 14px; border: 1px dashed var(--line)">
+<div style="flex: 1 1 320px">
+<div style="font-weight: 600">Add another model</div>
+<div style="margin-top: 4px; color: var(--muted); line-height: 1.5">Copy any .gguf file into the models folder, by USB or file share, then press Refresh. No download happens inside Rafeeq.</div>
+</div>
+<button style="height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--line); font-weight: 500">How to sideload a model</button>
+</div>
+</div>
+</main>
+
+<aside aria-label="Model details" style="flex: 0 0 320px; box-sizing: border-box; padding: 24px 22px; display: flex; flex-direction: column; gap: 18px; background: var(--panel); border-left: 1px solid var(--line); overflow: hidden">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint)">Details</div>
+<div style="font-size: 18px; font-weight: 600">qwen2.5 0.5b instruct</div>
+<dl style="margin: 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 14px 12px">
+<dt style="color: var(--muted)">Type</dt><dd style="margin: 0">Chat</dd>
+<dt style="color: var(--muted)">Quantization</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">Q4_K_M</dd>
+<dt style="color: var(--muted)">Size on disk</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">469 MB</dd>
+<dt style="color: var(--muted)">File</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all">qwen2.5-0.5b-instruct-q4_k_m.gguf</dd>
+<dt style="color: var(--muted)">Location</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all">C:\Users\a\AppData\Local\com.ayoubedahlouli.rafeeq\models</dd>
+</dl>
+<div style="height: 1px; background: var(--line)"></div>
+<div style="padding: 14px 16px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); line-height: 1.55">This model is small and fast. For better answers on documents and code, load a larger model that fits in your RAM.</div>
+</aside>
+</div>
+
+<footer style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; min-height: 32px; padding: 0 20px; box-sizing: border-box; background: var(--panel); border-top: 1px solid var(--line); font-size: 12px; color: var(--muted)">
+<span style="display: flex; align-items: center; gap: 8px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accentFg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3z"></path><path d="M9 12l2 2 4-4"></path></svg>
+Offline · no network calls
+</span>
+<span style="display: flex; align-items: center; gap: 18px; font-family: 'JetBrains Mono', monospace">
+<span>RAM 1.4 / 8 GB</span>
+<span>CPU 12%</span>
+</span>
+</footer>
+</div>
+
+
+</body>
+</html>

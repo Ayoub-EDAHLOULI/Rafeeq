@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rafeeq — Settings</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.rq{--bg:#0a0c10;--panel:#11141a;--panel2:#181c24;--line:#252b36;--text:#e9ecf1;--muted:#9ba4b3;--faint:#8791a1;--accent:#2f6fed;--accentFg:#8ab4ff;--onAccent:#ffffff;--dot:#4ade80;--warn:#f0a35c}
+.rq[data-theme="light"]{--bg:#f5f6f8;--panel:#ffffff;--panel2:#eceef2;--line:#dcdfe6;--text:#12151b;--muted:#4d5666;--faint:#5b6575;--accent:#2257d6;--accentFg:#1d4fc4;--onAccent:#ffffff;--dot:#15803d;--warn:#a85200}
+.rq button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+.rq textarea,.rq input,.rq select{font:inherit;color:inherit}
+.rq button:focus-visible,.rq input:focus-visible,.rq textarea:focus-visible{outline:2px solid var(--accentFg);outline-offset:2px}
+</style>
+
+<div class="rq" data-theme="light" style="width: 100%; height: 800px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 14px">
+
+<header style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; min-height: 60px; padding: 0 20px; box-sizing: border-box; background: var(--panel); border-bottom: 1px solid var(--line)">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 32px; height: 32px; border-radius: 9px; background: var(--accent); display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>
+</div>
+<span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">Rafeeq</span>
+</div>
+<button aria-label="Change loaded model" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2)">
+<span style="width: 8px; height: 8px; border-radius: 50%; background: var(--dot)"></span>
+<span style="font-weight: 500">qwen2.5 0.5b instruct</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">Q4_K_M · 469 MB</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--accentFg)"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent)"></span>Offline</span>
+<button aria-label="Switch light or dark theme" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"></path></svg>
+</button>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 0; min-height: 0; overflow: hidden">
+
+<nav aria-label="Sections" style="flex: 0 0 auto; width: 64px; box-sizing: border-box; padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel); border-right: 1px solid var(--line)">
+<button aria-label="Chat" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>
+</button>
+<button aria-label="Models" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>
+</button>
+<button aria-label="Settings" aria-current="page" style="margin-top: auto; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--panel2); color: var(--accentFg)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg>
+</button>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; min-height: 0; overflow: hidden; box-sizing: border-box; padding: 28px 40px; display: flex; flex-direction: column; gap: 22px">
+<div>
+<h1 style="margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em">Settings</h1>
+<p style="margin: 6px 0 0; color: var(--muted)">Everything here is stored on this device.</p>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+
+<div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+<section style="padding: 20px 22px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Appearance</h2>
+<div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px">
+<span id="theme-label" style="font-weight: 500">Theme</span>
+<div role="radiogroup" aria-labelledby="theme-label" style="display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line)">
+<button role="radio" aria-checked="true" style="height: 40px; padding: 0 18px; border-radius: 9px; background: var(--accent); color: var(--onAccent); font-weight: 600">System</button>
+<button role="radio" aria-checked="false" style="height: 40px; padding: 0 18px; border-radius: 9px; color: var(--muted); font-weight: 500">Light</button>
+<button role="radio" aria-checked="false" style="height: 40px; padding: 0 18px; border-radius: 9px; color: var(--muted); font-weight: 500">Dark</button>
+</div>
+</div>
+</section>
+
+<section style="padding: 20px 22px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Models folder</h2>
+<p style="margin: 0; color: var(--muted); line-height: 1.5">Rafeeq reads models from this folder. Copy .gguf files into it, then refresh the Models page.</p>
+<div style="padding: 12px 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-family: 'JetBrains Mono', monospace; font-size: 12px; word-break: break-all">C:\Users\a\AppData\Local\com.ayoubedahlouli.rafeeq\models</div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap">
+<button style="height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--line); font-weight: 500">Open folder</button>
+<button style="height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--line); font-weight: 500">Change location</button>
+</div>
+</section>
+
+<section style="padding: 20px 22px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Privacy and data</h2>
+<div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accentFg)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex: none; margin-top: 2px"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3z"></path><path d="M9 12l2 2 4-4"></path></svg>
+<span style="color: var(--muted); line-height: 1.5">Rafeeq makes no network calls. Block network access at the system level and it runs the same.</span>
+</div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<span id="hist-label" style="font-weight: 500">Keep chat history on this device</span>
+<button role="switch" aria-checked="true" aria-labelledby="hist-label" style="width: 52px; height: 44px; display: flex; align-items: center; justify-content: center; flex: none">
+<span style="width: 44px; height: 26px; border-radius: 999px; background: var(--accent); position: relative; display: block"><span style="position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: #ffffff; display: block"></span></span>
+</button>
+</div>
+<div>
+<button style="height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--warn); color: var(--warn); font-weight: 500">Delete all conversations</button>
+</div>
+</section>
+</div>
+
+<div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+<section style="padding: 20px 22px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 18px">
+<div>
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Defaults for new chats</h2>
+<p style="margin: 6px 0 0; color: var(--muted); line-height: 1.5">Applied when you start a chat. You can still change them for a single session.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between"><label for="threads" style="font-weight: 500">CPU threads</label><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">4</span></div>
+<input id="threads" type="range" min="1" max="8" step="1" value="4" style="width: 100%; accent-color: var(--accent)">
+<span style="font-size: 12px; color: var(--faint)">Fewer threads keep the computer responsive while Rafeeq answers.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between"><label for="ctxd" style="font-weight: 500">Context length</label><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">4096</span></div>
+<input id="ctxd" type="range" min="512" max="8192" step="512" value="4096" style="width: 100%; accent-color: var(--accent)">
+<span style="font-size: 12px; color: var(--faint)">Longer context fits bigger documents but uses more memory.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between"><label for="maxtok" style="font-weight: 500">Max response length</label><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">512</span></div>
+<input id="maxtok" type="range" min="128" max="2048" step="128" value="512" style="width: 100%; accent-color: var(--accent)">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between"><label for="tempd" style="font-weight: 500">Temperature</label><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">0.7</span></div>
+<input id="tempd" type="range" min="0" max="2" step="0.1" value="0.7" style="width: 100%; accent-color: var(--accent)">
+</div>
+</section>
+
+<section style="padding: 20px 22px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">About</h2>
+<dl style="margin: 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px 12px">
+<dt style="color: var(--muted)">Version</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">[x.y.z]</dd>
+<dt style="color: var(--muted)">License</dt><dd style="margin: 0">MIT</dd>
+<dt style="color: var(--muted)">Built with</dt><dd style="margin: 0">Tauri, Rust, llama.cpp</dd>
+</dl>
+</section>
+</div>
+</div>
+</main>
+</div>
+
+<footer style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; min-height: 32px; padding: 0 20px; box-sizing: border-box; background: var(--panel); border-top: 1px solid var(--line); font-size: 12px; color: var(--muted)">
+<span style="display: flex; align-items: center; gap: 8px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accentFg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3z"></path><path d="M9 12l2 2 4-4"></path></svg>
+Offline · no network calls
+</span>
+<span style="display: flex; align-items: center; gap: 18px; font-family: 'JetBrains Mono', monospace">
+<span>RAM 1.4 / 8 GB</span>
+<span>CPU 12%</span>
+</span>
+</footer>
+</div>
+
+
+</body>
+</html>

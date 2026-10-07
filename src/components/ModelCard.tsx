@@ -24,7 +24,7 @@ export default function ModelCard({
         isLoaded ? "border-primary/60" : "border-border hover:border-primary/40"
       }`}
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-accentFg">
         <svg
           width="20"
           height="20"
@@ -56,7 +56,7 @@ export default function ModelCard({
             {model.name}
           </p>
           {isLoaded && (
-            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-accentFg">
               Loaded
             </span>
           )}

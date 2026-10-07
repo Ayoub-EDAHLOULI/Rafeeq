@@ -1,0 +1,100 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "RAGNoMatch.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "RAG — no match",
+      "w": 1440,
+      "x": 1520,
+      "y": 2760
+    },
+    "RAG.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "RAG — answers with sources",
+      "w": 1440,
+      "x": 0,
+      "y": 2760
+    },
+    "Settings.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "Settings",
+      "w": 1440,
+      "x": 0,
+      "y": 1840
+    },
+    "Knowledge.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "Knowledge base — RAG milestone",
+      "w": 1440,
+      "x": 1520,
+      "y": 1840
+    },
+    "Document.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "Document Q&A",
+      "w": 1440,
+      "x": 0,
+      "y": 920
+    },
+    "FirstRun.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "First run — no model yet",
+      "w": 1440,
+      "x": 1520,
+      "y": 920
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "Chat",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Models.dc.html": {
+      "expand": "fill",
+      "h": 800,
+      "title": "Models",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-07T12:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "t1": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Rafeeq desktop — redesign",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Models.dc.html",
+    "Document.dc.html",
+    "FirstRun.dc.html",
+    "Settings.dc.html",
+    "Knowledge.dc.html",
+    "RAG.dc.html",
+    "RAGNoMatch.dc.html"
+  ],
+  "pages": [],
+  "title": "Rafeeq Desktop Redesign"
+}

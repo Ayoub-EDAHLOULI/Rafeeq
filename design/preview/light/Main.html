@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rafeeq — Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.rq{--bg:#0a0c10;--panel:#11141a;--panel2:#181c24;--line:#252b36;--text:#e9ecf1;--muted:#9ba4b3;--faint:#8791a1;--accent:#2f6fed;--accentFg:#8ab4ff;--onAccent:#ffffff;--dot:#4ade80}
+.rq[data-theme="light"]{--bg:#f5f6f8;--panel:#ffffff;--panel2:#eceef2;--line:#dcdfe6;--text:#12151b;--muted:#4d5666;--faint:#5b6575;--accent:#2257d6;--accentFg:#1d4fc4;--onAccent:#ffffff;--dot:#15803d}
+.rq button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+.rq textarea,.rq input,.rq select{font:inherit;color:inherit}
+.rq button:focus-visible,.rq input:focus-visible,.rq textarea:focus-visible{outline:2px solid var(--accentFg);outline-offset:2px}
+</style>
+
+<div class="rq" data-theme="light" style="width: 100%; height: 800px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 14px">
+
+<header style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; min-height: 60px; padding: 0 20px; box-sizing: border-box; background: var(--panel); border-bottom: 1px solid var(--line)">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 32px; height: 32px; border-radius: 9px; background: var(--accent); display: flex; align-items: center; justify-content: center">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>
+</div>
+<span style="font-size: 17px; font-weight: 600; letter-spacing: -0.01em">Rafeeq</span>
+</div>
+<button aria-label="Change loaded model" style="display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2)">
+<span style="width: 8px; height: 8px; border-radius: 50%; background: var(--dot)"></span>
+<span style="font-weight: 500">qwen2.5 0.5b instruct</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">Q4_K_M · 469 MB</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--accentFg)"><span style="width: 7px; height: 7px; border-radius: 50%; background: var(--accent)"></span>Offline</span>
+<button aria-label="Switch light or dark theme" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"></path></svg>
+</button>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; flex: 1 1 0; min-height: 0; overflow: hidden">
+
+<div style="display: flex; flex: 0 0 auto; min-height: 0">
+<nav aria-label="Sections" style="width: 64px; box-sizing: border-box; padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--panel); border-right: 1px solid var(--line)">
+<button aria-label="Chat" aria-current="page" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--panel2); color: var(--accentFg)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>
+</button>
+<button aria-label="Models" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>
+</button>
+<button aria-label="Settings" style="margin-top: auto; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg>
+</button>
+</nav>
+
+<aside aria-label="Conversations" style="width: 264px; box-sizing: border-box; padding: 16px 14px; display: flex; flex-direction: column; gap: 14px; background: var(--bg); border-right: 1px solid var(--line)">
+<button style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 10px; background: var(--accent); color: var(--onAccent); font-weight: 600">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+New chat
+</button>
+<input type="search" aria-label="Search chats" placeholder="Search chats" style="height: 40px; box-sizing: border-box; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); outline: none">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="padding: 4px 12px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint)">Today</span>
+<button style="display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px; background: var(--panel2)">
+<span style="display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">is c# a good language?</span>
+<span style="display: block; margin-top: 2px; font-size: 12px; color: var(--faint)">just now</span>
+</button>
+<button style="display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px">
+<span style="display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">hello what's up dude</span>
+<span style="display: block; margin-top: 2px; font-size: 12px; color: var(--faint)">4m ago</span>
+</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="padding: 4px 12px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint)">Earlier</span>
+<button style="display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px">
+<span style="display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">command to start tauri app</span>
+<span style="display: block; margin-top: 2px; font-size: 12px; color: var(--faint)">17d ago</span>
+</button>
+<button style="display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px">
+<span style="display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">How many children completed…</span>
+<span style="display: block; margin-top: 2px; font-size: 12px; color: var(--faint)">17d ago</span>
+</button>
+<button style="display: block; width: 100%; text-align: left; padding: 10px 12px; border-radius: 10px">
+<span style="display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">What's the status of each facility</span>
+<span style="display: block; margin-top: 2px; font-size: 12px; color: var(--faint)">18d ago</span>
+</button>
+</div>
+</aside>
+</div>
+
+<main style="flex: 999 1 560px; min-width: 0; min-height: 0; display: flex; flex-direction: column">
+<div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 18px 32px 0">
+<div>
+<div style="font-size: 16px; font-weight: 600">is c# a good language?</div>
+<div style="margin-top: 3px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--faint)">qwen2.5-0.5b-instruct-q4_k_m.gguf</div>
+</div>
+<div role="tablist" aria-label="Chat mode" style="display: flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line)">
+<button role="tab" aria-selected="true" style="height: 40px; padding: 0 18px; border-radius: 9px; background: var(--accent); color: var(--onAccent); font-weight: 600">General</button>
+<button role="tab" aria-selected="false" style="height: 40px; padding: 0 18px; border-radius: 9px; color: var(--muted); font-weight: 500">Code help</button>
+<button role="tab" aria-selected="false" style="height: 40px; padding: 0 18px; border-radius: 9px; color: var(--muted); font-weight: 500">Document</button>
+<button role="tab" aria-selected="false" style="height: 40px; padding: 0 18px; border-radius: 9px; color: var(--muted); font-weight: 500">RAG</button>
+</div>
+</div>
+
+<div style="flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 22px; width: 100%; max-width: 780px; margin: 0 auto; box-sizing: border-box; padding: 28px 32px">
+<div style="align-self: flex-end; max-width: 78%; padding: 12px 16px; border-radius: 16px 16px 4px 16px; background: var(--accent); color: var(--onAccent); line-height: 1.5">is c# a good language?</div>
+<div style="align-self: flex-start; max-width: 88%; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted)">
+<span style="width: 20px; height: 20px; border-radius: 6px; background: var(--accent); display: inline-flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg></span>
+Rafeeq
+</div>
+<div style="padding: 14px 18px; border-radius: 4px 16px 16px 16px; background: var(--panel); border: 1px solid var(--line); line-height: 1.6">Yes — C# is a solid, general-purpose language. It is strongly typed, has a mature ecosystem around .NET, and is widely used for backend services, desktop apps and games. If you already work in .NET, it is a natural fit.</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--faint)">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3z"></path><path d="M9 12l2 2 4-4"></path></svg>
+Generated on this device
+</div>
+</div>
+</div>
+
+<div style="width: 100%; max-width: 780px; margin: 0 auto; box-sizing: border-box; padding: 0 32px 18px">
+<div style="padding: 12px 12px 12px 16px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); display: flex; align-items: flex-end; gap: 10px">
+<button aria-label="Attach a document" style="width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); flex: none">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5l-8 8a5 5 0 0 1-7-7l8.5-8.5a3.5 3.5 0 0 1 5 5L10 17.5a2 2 0 0 1-3-3L14.5 7"></path></svg>
+</button>
+<textarea aria-label="Message" rows="2" placeholder="Message Rafeeq…" style="flex: 1 1 0; min-width: 0; resize: none; border: 0; outline: none; background: transparent; line-height: 1.5; padding: 10px 0"></textarea>
+<button aria-label="Send message" style="width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--accent); color: var(--onAccent); flex: none">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>
+</button>
+</div>
+<div style="margin-top: 10px; text-align: center; font-size: 12px; color: var(--faint)">Runs on this device. Nothing you type leaves it.</div>
+</div>
+</main>
+
+<aside aria-label="Session settings" style="flex: 0 0 304px; box-sizing: border-box; padding: 22px 20px; display: flex; flex-direction: column; gap: 22px; background: var(--panel); border-left: 1px solid var(--line); overflow: hidden">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint)">Session</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="sys" style="font-weight: 500">System prompt</label>
+<textarea id="sys" rows="4" style="resize: none; box-sizing: border-box; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); line-height: 1.5; outline: none">You are Rafeeq, a concise and helpful assistant that runs fully offline.</textarea>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between"><label for="temp" style="font-weight: 500">Temperature</label><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">0.7</span></div>
+<input id="temp" type="range" min="0" max="2" step="0.1" value="0.7" style="width: 100%; accent-color: var(--accent)">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; justify-content: space-between"><label for="ctx" style="font-weight: 500">Context length</label><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--muted)">4096</span></div>
+<input id="ctx" type="range" min="512" max="8192" step="512" value="4096" style="width: 100%; accent-color: var(--accent)">
+</div>
+<div style="height: 1px; background: var(--line)"></div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint)">Loaded model</div>
+<div style="padding: 12px 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px">
+<span style="font-weight: 500">qwen2.5 0.5b instruct</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted)">Q4_K_M · 469 MB</span>
+</div>
+<button style="height: 44px; border-radius: 10px; border: 1px solid var(--line); font-weight: 500">Unload model</button>
+</div>
+</aside>
+</div>
+
+<footer style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; min-height: 32px; padding: 0 20px; box-sizing: border-box; background: var(--panel); border-top: 1px solid var(--line); font-size: 12px; color: var(--muted)">
+<span style="display: flex; align-items: center; gap: 8px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accentFg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6l8-3z"></path><path d="M9 12l2 2 4-4"></path></svg>
+Offline · no network calls
+</span>
+<span style="display: flex; align-items: center; gap: 18px; font-family: 'JetBrains Mono', monospace">
+<span>RAM 1.4 / 8 GB</span>
+<span>CPU 12%</span>
+</span>
+</footer>
+</div>
+
+
+</body>
+</html>

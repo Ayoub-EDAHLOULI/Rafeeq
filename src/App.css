@@ -5,27 +5,39 @@
 @layer base {
   :root {
     /* LIGHT MODE COLORS */
-    --background: #f7f8fa;
+    --background: #f5f6f8;
     --card: #ffffff;
-    --text: #17191c;
-    --subText: #6b7280;
-    --primary: #1d63ed;
+    --panel2: #eceef2;
+    --text: #12151b;
+    --subText: #4d5666;
+    --faint: #5b6575;
+    --primary: #2257d6;
+    --accentFg: #1d4fc4;
+    --onAccent: #ffffff;
+    --dot: #15803d;
     --danger: #d92d20;
-    --border: #e2e5ea;
-    --inputBg: #eef0f3;
+    --warn: #a85200;
+    --border: #dcdfe6;
+    --inputBg: #eceef2;
     color-scheme: light;
   }
 
   .dark {
     /* DARK MODE COLORS */
-    --background: #000000;
-    --card: #1c1c1e;
-    --text: #ffffff;
-    --subText: #98989f;
-    --primary: #0a84ff;
+    --background: #0a0c10;
+    --card: #11141a;
+    --panel2: #181c24;
+    --text: #e9ecf1;
+    --subText: #9ba4b3;
+    --faint: #8791a1;
+    --primary: #2f6fed;
+    --accentFg: #8ab4ff;
+    --onAccent: #ffffff;
+    --dot: #4ade80;
     --danger: #ff453a;
-    --border: #38383a;
-    --inputBg: #2c2c2e;
+    --warn: #f0a35c;
+    --border: #252b36;
+    --inputBg: #181c24;
     color-scheme: dark;
   }
 
