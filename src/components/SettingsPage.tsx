@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { ThemePreference } from "../theme/useTheme";
 import { getModelsDir, openModelsDir } from "../lib/scanModels";
 import {
@@ -313,6 +314,18 @@ export default function SettingsPage({
             <dl className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-2.5">
               <dt className="text-subText">Version</dt>
               <dd className="font-mono">{version || "—"}</dd>
+              <dt className="text-subText">Developer</dt>
+              <dd>
+                <button
+                  type="button"
+                  onClick={() =>
+                    openUrl("https://ayoubedahlouli.com").catch(() => {})
+                  }
+                  className="text-text transition-colors hover:text-primary hover:underline"
+                >
+                  Ayoub Edahlouli
+                </button>
+              </dd>
               <dt className="text-subText">License</dt>
               <dd>MIT</dd>
               <dt className="text-subText">Built with</dt>
