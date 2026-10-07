@@ -331,60 +331,34 @@ export default function ChatView({ modelName, onChangeModel }: ChatViewProps) {
               {modelName}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <div className="flex items-center rounded-lg border border-border p-0.5 text-sm">
+          <div
+            role="tablist"
+            aria-label="Chat mode"
+            className="flex shrink-0 gap-0.5 rounded-xl border border-border bg-card p-0.5"
+          >
+            {(
+              [
+                { key: "general", label: "General" },
+                { key: "code", label: "Code help" },
+                { key: "document", label: "Document" },
+                { key: "rag", label: "RAG" },
+              ] as const
+            ).map((tab) => (
               <button
+                key={tab.key}
                 type="button"
-                onClick={() => setMode("general")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  mode === "general"
+                role="tab"
+                aria-selected={mode === tab.key}
+                onClick={() => setMode(tab.key)}
+                className={`h-9 rounded-lg px-4 text-sm font-medium transition-colors ${
+                  mode === tab.key
                     ? "bg-primary text-white"
                     : "text-subText hover:text-text"
                 }`}
               >
-                General
+                {tab.label}
               </button>
-              <button
-                type="button"
-                onClick={() => setMode("code")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  mode === "code"
-                    ? "bg-primary text-white"
-                    : "text-subText hover:text-text"
-                }`}
-              >
-                Code help
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("document")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  mode === "document"
-                    ? "bg-primary text-white"
-                    : "text-subText hover:text-text"
-                }`}
-              >
-                Document
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("rag")}
-                className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
-                  mode === "rag"
-                    ? "bg-primary text-white"
-                    : "text-subText hover:text-text"
-                }`}
-              >
-                RAG
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={onChangeModel}
-              className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-inputBg"
-            >
-              Change model
-            </button>
+            ))}
           </div>
         </div>
 

@@ -10,7 +10,7 @@ Status: approved, with amendments (see §5). Steps are checked off below as they
 - [x] Step 4a — RAM/CPU status command (system-wide, visibility-gated polling)
 - [x] Step 4b — Model type detection and caching
 - [x] Step 5 — Models page and First run
-- [ ] Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle
+- [x] Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle
 - [ ] Step 7 — Session panel (system prompt, temperature, context length)
 - [ ] Step 8 — Document panel: context meter (real tokenizer count) and extracted-text preview
 - [ ] Step 9 — Settings page (local JSON store, path TBD at implementation time)
@@ -164,14 +164,14 @@ Each step is scoped to be one commit and leaves `npm run tauri dev` working. "Ve
 **Risk:** Low — mostly visual/structural reshuffling of already-working logic; the only new logic is the selection state and its fallback rules.
 **Commit message:** `Restyle Models page and first-run empty state`
 
-### Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle [MVP]
+### Step 6 — Chat: sidebar grouping, loaded-model pill, mode tabs restyle [MVP] — DONE
 **Goal:** Visual rework of `ChatView`'s header and `SessionSidebar` into the new layout (Today/Earlier grouping, search, pill-style mode tabs), top-bar loaded-model pill wired to open the model switcher.
-**Files:** `src/components/ChatView.tsx`, `src/components/SessionSidebar.tsx`, `src/components/TopBar.tsx`.
-**Approach:** Today/Earlier grouping and search are pure client-side list filtering/bucketing over the already-loaded `sessions` array — no new backend needed. Clicking the top-bar pill navigates to the Models section (reuses step 3's navigation) rather than opening a separate dropdown/modal, to avoid building two different "switch model" UIs.
-**Acceptance criteria:** Sidebar groups by Today/Earlier, search filters by title, pill shows current model and navigates to Models on click.
-**Verify:** With 3+ saved sessions spanning different ages, confirm grouping and search; click the pill and confirm it lands on Models.
+**Files:** `src/components/ChatView.tsx` (mode tabs restyled into a pill-style `role="tablist"`; the separate "Change model" button removed, since the top-bar pill already does this and the design avoids two controls for the same action), `src/components/SessionSidebar.tsx` (rewritten with Today/Earlier grouping and a search input).
+**Approach:** Today/Earlier grouping and search are pure client-side filtering/bucketing (`useMemo` over the already-loaded `sessions` array, "Today" = same calendar day as now) — no new backend needed. `TopBar.tsx` needed no changes: its loaded-model pill was already wired to navigate to the Models section back in step 3, satisfying this step's pill requirement ahead of time.
+**Verified:** `npx tsc --noEmit` clean, `npm run build` succeeds.
+**Remaining manual verification (for you):** `npm run tauri dev`. With 3+ saved chats spanning different ages (today vs. older), confirm the sidebar groups them under "Today" and "Earlier" correctly, and that typing in the search box filters by title (case-insensitive) with an empty-match message when nothing matches. Switch between the four mode tabs and confirm the pill-style active state matches the mockup. Click the top-bar model pill and confirm it still navigates to Models (unchanged since step 3, but worth re-checking after this restyle).
 **Risk:** Low.
-**Commit message:** `Restyle chat sidebar and wire the top-bar model pill`
+**Commit message:** `Restyle chat sidebar and chat mode tabs`
 
 ### Step 7 — Session panel (system prompt, temperature, context length) [MVP]
 **Goal:** Add the right-hand session panel in General/Code modes, make temperature, context length, and CPU threads real per-request parameters instead of Rust constants.
